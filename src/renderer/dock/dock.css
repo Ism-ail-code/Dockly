@@ -1,0 +1,895 @@
+/* ============================================================
+   Dockly — Dock window (Sticky workspace)
+   ============================================================ */
+
+html,
+body,
+#dock-root {
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--t-14);
+  color: var(--text-1);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* ---------- root ---------- */
+.dock {
+  height: 100vh;
+  width: 100vw;
+  padding: 8px 6px 8px 0;
+}
+.dock.side-left {
+  padding: 8px 0 8px 6px;
+}
+
+/* ---------- collapsed rail ---------- */
+.dock-collapsed {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dock-rail-logo {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 11px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-3);
+  cursor: pointer;
+  transition: transform var(--dur-2) var(--ease-spring), box-shadow var(--dur-2);
+  animation: fadeIn 0.25s both;
+}
+.dock-rail-logo:hover {
+  transform: scale(1.1);
+  box-shadow: 0 8px 24px var(--accent-glow);
+}
+
+/* ---------- expanded panel ----------
+   Readable sticky surface: near-opaque by default.
+   The "transparency" setting lowers opacity + adds subtle blur. */
+.dock-expanded {
+  display: flex;
+}
+.dock-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px 8px 8px 16px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+  transition: border-radius var(--dur-2), background var(--dur-2);
+}
+.dock.side-left .dock-panel {
+  border-radius: 8px 16px 16px 8px;
+}
+.dock[data-translucent="on"] .dock-panel {
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(1.25);
+}
+.dock-panel.focus {
+  background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+}
+
+/* ---------- header ---------- */
+.dock-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px 7px 12px;
+  flex: none;
+  min-height: 40px;
+}
+.dock-head-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  flex: 1;
+}
+.dock-brand {
+  font-family: var(--font-display);
+  font-size: var(--t-12.5);
+  font-weight: 650;
+  letter-spacing: 0.01em;
+  color: var(--text-1);
+  white-space: nowrap;
+}
+.dock-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+}
+
+/* ---------- buttons ---------- */
+.dock-btn {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+.dock-btn:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+.dock-btn.on {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.dock-btn:active {
+  transform: scale(0.88);
+}
+.dock-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+.dock-btn svg {
+  width: 12px;
+  height: 12px;
+}
+.dock-btn-new {
+  width: auto;
+  padding: 0 8px;
+  gap: 4px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11.5px;
+  font-weight: 650;
+  border-radius: 8px;
+}
+.dock-btn-new:hover {
+  background: var(--accent-hover);
+  color: var(--accent-ink);
+}
+
+/* ---------- search ---------- */
+.dock-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 12px 8px;
+  padding: 0 9px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  flex: none;
+}
+.dock-search > svg {
+  width: 13px;
+  height: 13px;
+  color: var(--text-3);
+  flex: none;
+}
+.dock-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--t-13);
+}
+.dock-search-input::placeholder {
+  color: var(--text-3);
+}
+.dock-search-clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+}
+.dock-search-clear:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+.dock-search-pop {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  right: 0;
+  z-index: 40;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-3);
+  animation: scaleIn 0.15s var(--ease-out) both;
+}
+.dock-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 9px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+}
+.dock-search-row:hover {
+  background: var(--accent-soft);
+}
+.dock-search-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.dock-search-title {
+  font-size: var(--t-12.5);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-search-preview {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-search-empty {
+  padding: 12px 10px;
+  font-size: var(--t-12.5);
+  color: var(--text-3);
+  text-align: center;
+}
+.dock-search-more {
+  padding: 7px 10px 5px;
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+}
+
+/* ---------- subject row ---------- */
+.dock-subject-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px 8px;
+  flex: none;
+}
+.dock-subject-wrap {
+  position: relative;
+  min-width: 0;
+}
+.dock-subject-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dock-subject-chip:hover {
+  background: var(--accent-soft-2);
+}
+.dock-subject-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+.dock-subject-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+.dock-note-count {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  flex: none;
+}
+.dock-subject-pop {
+  position: absolute;
+  top: calc(100% + 5px);
+  left: 0;
+  z-index: 40;
+  min-width: 210px;
+  max-width: 280px;
+  padding: 5px;
+  border-radius: 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-3);
+  animation: scaleIn 0.15s var(--ease-out) both;
+}
+.dock-pop-label {
+  padding: 5px 9px 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.dock-subject-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 9px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--t-12.5);
+  cursor: pointer;
+}
+.dock-subject-option:hover {
+  background: var(--surface-2);
+}
+.dock-subject-option.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.dock-subject-option-name {
+  flex: 1;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-subject-manage {
+  width: 100%;
+  padding: 6px 9px;
+  border: none;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  border-radius: 0 0 8px 8px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--t-12.5);
+  text-align: left;
+  cursor: pointer;
+}
+.dock-subject-manage:hover {
+  background: var(--surface-2);
+  color: var(--text-1);
+}
+
+/* ---------- body ---------- */
+.dock-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0 10px 10px;
+  overflow: hidden;
+}
+.dock-body.focus {
+  padding-top: 4px;
+}
+
+/* ---------- sticky note card ---------- */
+.dock-note {
+  flex: 0 1 auto;
+  min-height: 150px;
+  max-height: 56%;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  transition: border-color var(--dur-1), box-shadow var(--dur-1);
+}
+.dock-note:hover {
+  border-color: var(--accent-ring);
+}
+.dock-note-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px 2px 12px;
+  flex: none;
+}
+.dock-note-title {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text-1);
+  font-family: var(--font-display);
+  font-size: var(--t-14);
+  font-weight: 650;
+  padding: 2px 4px;
+  border-radius: 6px;
+  transition: background var(--dur-1);
+}
+.dock-note-title:hover {
+  background: var(--surface-2);
+}
+.dock-note-title:focus {
+  background: var(--surface-2);
+}
+.dock-note-title::placeholder {
+  color: var(--text-3);
+}
+.dock-note-star {
+  flex: none;
+}
+.dock-editor {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dock-editor .ProseMirror {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 14px 14px;
+}
+.dock-note.empty {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.dock-note-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: var(--sp-4);
+  text-align: center;
+}
+.dock-note-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-family: var(--font-ui);
+  font-size: var(--t-13);
+  font-weight: 650;
+  cursor: pointer;
+  box-shadow: var(--shadow-accent);
+  transition: transform var(--dur-2) var(--ease-spring), background var(--dur-1);
+}
+.dock-note-cta:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+}
+.dock-note-cta:active {
+  transform: scale(0.96);
+}
+.dock-note-cta-sub {
+  font-size: 11.5px;
+  color: var(--text-3);
+  max-width: 210px;
+  line-height: 1.5;
+}
+
+/* ---------- recent notes ---------- */
+.dock-recents {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 2px 2px;
+}
+.dock-section-label {
+  padding: 2px 6px 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.dock-recents-empty {
+  padding: 14px 10px;
+  font-size: var(--t-12.5);
+  color: var(--text-3);
+  text-align: center;
+}
+.dock-recent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-1);
+  text-align: left;
+  cursor: pointer;
+}
+.dock-recent:hover {
+  background: var(--surface-2);
+}
+.dock-recent.active {
+  background: var(--accent-soft);
+}
+.dock-recent.active .dock-recent-title {
+  color: var(--accent);
+}
+.dock-recent-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.dock-recent-title {
+  font-size: var(--t-12.5);
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-recent-preview {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-recent-time {
+  font-size: 10.5px;
+  color: var(--text-3);
+  flex: none;
+}
+.dock-recent-star {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  color: var(--text-3);
+  flex: none;
+}
+.dock-recent-star:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.dock-recent-star.on {
+  color: var(--accent);
+}
+.dock-open-library {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 7px;
+  border: 1px dashed var(--border-strong);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--t-12.5);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1);
+}
+.dock-open-library:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent);
+}
+
+/* focus mode: card fills the panel */
+.dock.focus .dock-note {
+  flex: 1;
+  max-height: none;
+}
+.dock.focus .dock-editor .ProseMirror {
+  padding-top: 8px;
+}
+
+/* ---------- footer ---------- */
+.dock-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 8px;
+  flex: none;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.dock-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dock-save-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.dock-save.saving .dock-save-dot {
+  background: var(--warn);
+}
+.dock-save.saved {
+  color: var(--ok);
+}
+.dock-save.saved .dock-save-dot {
+  background: var(--ok);
+}
+.dock-capture-hint {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dock-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  flex: none;
+}
+.dock-hint {
+  opacity: 0;
+  transition: opacity var(--dur-2);
+  flex: none;
+}
+.dock:hover .dock-hint {
+  opacity: 1;
+}
+
+/* ---------- resize handle ---------- */
+.dock-resize {
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ew-resize;
+  color: var(--text-3);
+  opacity: 0;
+  transition: opacity var(--dur-2);
+  z-index: 10;
+}
+.dock-resize.left {
+  left: -2px;
+}
+.dock-resize.right {
+  right: -2px;
+}
+.dock:hover .dock-resize,
+.dock-resize.active {
+  opacity: 1;
+}
+.dock-resize::before {
+  content: "";
+  position: absolute;
+  inset: 0 5px;
+  background: var(--accent-soft);
+  border-radius: 99px;
+  opacity: 0;
+  transition: opacity var(--dur-2);
+}
+.dock-resize:hover::before,
+.dock-resize.active::before {
+  opacity: 1;
+}
+
+/* drag region when unlocked */
+.dock-drag-region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  cursor: move;
+}
+.dock-drag-region.left {
+  left: 0;
+}
+.dock-drag-region.right {
+  right: 0;
+}
+
+/* ============================================================
+   Dock editor document
+   ============================================================ */
+.doc-dock {
+  outline: none;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text-1);
+  caret-color: var(--accent);
+}
+.doc-dock h1 {
+  font-size: 1.45em;
+  font-weight: 700;
+  margin: 0.8em 0 0.35em;
+  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+}
+.doc-dock h2 {
+  font-size: 1.25em;
+  font-weight: 650;
+  margin: 0.7em 0 0.3em;
+  font-family: var(--font-display);
+}
+.doc-dock h3 {
+  font-size: 1.1em;
+  font-weight: 620;
+  margin: 0.6em 0 0.25em;
+  font-family: var(--font-display);
+}
+.doc-dock p {
+  margin: 0.3em 0;
+}
+.doc-dock ul,
+.doc-dock ol {
+  padding-left: 1.4em;
+  margin: 0.3em 0;
+}
+.doc-dock li {
+  margin: 0.15em 0;
+}
+.doc-dock a {
+  color: var(--accent);
+  text-decoration: none;
+}
+.doc-dock code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 0.12em 0.4em;
+  border-radius: 5px;
+}
+.doc-dock pre {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: var(--sp-3);
+  overflow-x: auto;
+  font-size: 12px;
+  margin: 0.6em 0;
+}
+.doc-dock pre code {
+  background: transparent;
+  color: var(--text-1);
+  padding: 0;
+}
+.doc-dock blockquote {
+  margin: 0.6em 0;
+  padding: 6px 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--accent-soft-2);
+  border-radius: 0 8px 8px 0;
+  color: var(--text-2);
+}
+.doc-dock img {
+  max-width: 100%;
+  border-radius: 10px;
+  margin: 0.6em auto;
+  display: block;
+  box-shadow: var(--shadow-2);
+}
+.doc-dock table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  margin: 0.6em 0;
+}
+.doc-dock th {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 650;
+  text-align: left;
+  padding: 6px 9px;
+  border: 1px solid var(--border);
+}
+.doc-dock td {
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+}
+.doc-dock ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 2px;
+}
+.doc-dock ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.doc-dock ul[data-type="taskList"] input[type="checkbox"] {
+  appearance: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 5px;
+  border: 2px solid var(--text-3);
+  margin-top: 3px;
+  cursor: pointer;
+  flex: none;
+}
+.doc-dock ul[data-type="taskList"] input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.doc-dock p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--text-3);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.doc-dock ::selection {
+  background: var(--accent-soft);
+}
