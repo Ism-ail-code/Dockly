@@ -1,0 +1,350 @@
+/* ============================================================
+   Dockly — Editor document styles (TipTap)
+   ============================================================ */
+
+.doc {
+  outline: none;
+  padding: var(--sp-6) var(--sp-7) 40vh;
+  max-width: 760px;
+  margin: 0 auto;
+  font-size: var(--t-15);
+  line-height: 1.75;
+  color: var(--text-1);
+  caret-color: var(--accent);
+}
+
+.doc > *:first-child {
+  margin-top: 0;
+}
+
+.doc h1 {
+  font-family: var(--font-display);
+  font-size: 1.75em;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+  margin: 1.4em 0 0.5em;
+}
+.doc h2 {
+  font-family: var(--font-display);
+  font-size: 1.42em;
+  font-weight: 660;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
+  margin: 1.3em 0 0.45em;
+}
+.doc h3 {
+  font-family: var(--font-display);
+  font-size: 1.18em;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  margin: 1.15em 0 0.4em;
+}
+
+.doc p {
+  margin: 0.45em 0;
+}
+
+.doc a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid var(--accent-ring);
+  transition: border-color var(--dur-1);
+}
+.doc a:hover {
+  border-bottom-color: var(--accent);
+}
+
+.doc strong {
+  font-weight: 650;
+}
+.doc em {
+  font-style: italic;
+}
+.doc s {
+  color: var(--text-3);
+}
+.doc code {
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 0.15em 0.42em;
+  border-radius: 6px;
+}
+
+.doc pre {
+  background: color-mix(in srgb, var(--surface-solid) 88%, var(--bg) 12%);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  margin: 0.8em 0;
+  overflow-x: auto;
+  position: relative;
+}
+.doc pre code {
+  font-family: var(--font-mono);
+  font-size: var(--t-12.5);
+  line-height: 1.6;
+  color: var(--text-1);
+  background: transparent;
+  padding: 0;
+}
+
+/* Blockquote */
+.doc blockquote {
+  margin: 0.8em 0;
+  padding: var(--sp-2) var(--sp-4);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  background: var(--accent-soft-2);
+  color: var(--text-2);
+}
+.doc blockquote p {
+  margin: 0.2em 0;
+}
+
+/* Lists */
+.doc ul,
+.doc ol {
+  padding-left: 1.6em;
+  margin: 0.45em 0;
+}
+.doc ul {
+  list-style: none;
+}
+.doc ul > li {
+  position: relative;
+}
+.doc ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.15em;
+  top: 0.68em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.doc ol {
+  list-style: none;
+  counter-reset: doclist;
+}
+.doc ol > li {
+  counter-increment: doclist;
+  position: relative;
+}
+.doc ol > li::before {
+  content: counter(doclist);
+  position: absolute;
+  left: -2.1em;
+  top: 0.18em;
+  width: 1.4em;
+  height: 1.4em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 0.72em;
+  font-weight: 700;
+}
+.doc li {
+  margin: 0.25em 0;
+}
+.doc li p {
+  margin: 0.15em 0;
+}
+
+/* Task lists */
+.doc ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+.doc ul[data-type="taskList"] > li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0.35em 0;
+}
+.doc ul[data-type="taskList"] > li::before {
+  display: none;
+}
+.doc ul[data-type="taskList"] li > label {
+  margin-top: 0.28em;
+  flex: none;
+}
+.doc ul[data-type="taskList"] input[type="checkbox"] {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  border: 2px solid var(--text-3);
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: background var(--dur-1), border-color var(--dur-1);
+  vertical-align: middle;
+}
+.doc ul[data-type="taskList"] input[type="checkbox"]:hover {
+  border-color: var(--accent);
+}
+.doc ul[data-type="taskList"] input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.doc ul[data-type="taskList"] input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 3.5px;
+  top: 0.5px;
+  width: 4.5px;
+  height: 8px;
+  border: solid var(--accent-ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.doc ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--text-3);
+  text-decoration: line-through;
+}
+
+/* Horizontal rule */
+.doc hr {
+  border: none;
+  border-top: 1px solid var(--border-strong);
+  margin: 1.5em 0;
+}
+
+/* Tables */
+.doc table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.9em 0;
+  font-size: 0.92em;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+}
+.doc th {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 650;
+  text-align: left;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+}
+.doc td {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  vertical-align: top;
+}
+.doc tr:has(> td):hover {
+  background: var(--surface-2);
+}
+.doc .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent-soft-2);
+  pointer-events: none;
+}
+.doc .selectedCell {
+  position: relative;
+}
+.doc table .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background: var(--accent);
+  cursor: col-resize;
+}
+.doc .tableWrapper {
+  overflow-x: auto;
+  position: relative;
+}
+
+/* Images */
+.doc img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1em auto;
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-2);
+  cursor: pointer;
+  transition: transform var(--dur-2), box-shadow var(--dur-2);
+  user-select: none;
+}
+.doc img:hover {
+  box-shadow: var(--shadow-3);
+}
+.doc img.ProseMirror-selectednode {
+  outline: 3px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+/* Placeholder */
+.doc p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--text-3);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Selection */
+.doc ::selection {
+  background: var(--accent-soft);
+}
+.doc .ProseMirror-selectednode {
+  outline: 2px solid var(--accent-ring);
+}
+
+/* Highlight marks */
+mark {
+  border-radius: 3px;
+  padding: 0.05em 0.15em;
+}
+mark[data-color] {
+  background-color: var(--accent-soft);
+}
+mark[data-color="#fde047"] { background-color: var(--mark-yellow); }
+mark[data-color="#86efac"] { background-color: var(--mark-green); }
+mark[data-color="#fca5a5"] { background-color: var(--mark-red); }
+mark[data-color="#93c5fd"] { background-color: var(--mark-blue); }
+mark[data-color="#d8b4fe"] { background-color: var(--accent-soft); }
+
+/* Bubble menu arrow refinement handled by tippy default */
+
+/* Line numbers (Editor → Show line numbers) */
+.doc.line-numbers {
+  counter-reset: line;
+}
+.doc.line-numbers > * {
+  position: relative;
+  padding-left: 46px;
+}
+.doc.line-numbers > *::before {
+  counter-increment: line;
+  content: counter(line);
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 34px;
+  text-align: right;
+  padding-right: 12px;
+  color: var(--text-3);
+  font-size: 0.7em;
+  opacity: 0.6;
+  user-select: none;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+.doc.line-numbers table {
+  overflow: visible;
+}

@@ -1,0 +1,197 @@
+/* ============================================================
+   Dockly Base
+   ============================================================ */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: var(--t-14);
+  line-height: 1.5;
+  color: var(--text-1);
+  background: transparent;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  user-select: none;
+  cursor: default;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-1);
+}
+
+/* App backdrop: glass acrylic + soft ambient glows */
+.app-bg {
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(900px 620px at 82% -12%, var(--bg-glow-1), transparent 60%),
+    radial-gradient(760px 560px at -8% 108%, var(--bg-glow-2), transparent 55%),
+    var(--bg-acrylic);
+}
+
+/* Custom scrollbars */
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-hover);
+  background-clip: content-box;
+  border: 3px solid transparent;
+}
+
+/* ---------- Typography helpers ---------- */
+.t-display {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+}
+.t-h1 {
+  font-family: var(--font-display);
+  font-size: var(--t-28);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+.t-h2 {
+  font-family: var(--font-display);
+  font-size: var(--t-20);
+  font-weight: 620;
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+.t-sub {
+  font-size: var(--t-13);
+  color: var(--text-2);
+}
+.t-mute {
+  color: var(--text-3);
+}
+.t-mono {
+  font-family: var(--font-mono);
+  font-size: var(--t-12);
+}
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.no-select {
+  user-select: none;
+}
+
+/* ---------- Motion ---------- */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes riseIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.995); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96) translateY(6px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.7); }
+  60% { transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes shimmer {
+  from { background-position: -400px 0; }
+  to { background-position: 400px 0; }
+}
+
+.view-enter {
+  animation: riseIn var(--dur-3) var(--ease-out) both;
+}
+.view-enter-fast {
+  animation: fadeIn var(--dur-2) var(--ease-io) both;
+}
+
+/* Staggered card entrance */
+.stagger > * {
+  animation: riseIn 0.42s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 34ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------- Appearance preferences (html data attributes) ---------- */
+/* Animations off */
+html[data-anim="off"] *,
+html[data-anim="off"] *::before,
+html[data-anim="off"] *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Compact mode: tighter spacing across views */
+html[data-compact="on"] .editor-view {
+  padding-top: var(--sp-2);
+}
+html[data-compact="on"] .editor-head {
+  margin-bottom: var(--sp-2);
+}
+html[data-compact="on"] .editor-toolbar {
+  padding: 4px 8px;
+}
+html[data-compact="on"] .dash-hero {
+  gap: var(--sp-3);
+}
+html[data-compact="on"] .settings-section {
+  padding: var(--sp-4);
+  margin-top: var(--sp-3);
+}
+html[data-compact="on"] .settings-row {
+  padding: var(--sp-2) 0;
+}
+html[data-compact="on"] .subject-card,
+html[data-compact="on"] .note-card {
+  padding: var(--sp-3);
+}
+
+/* Large toolbar icons */
+html[data-large-toolbar="on"] .tb-btn {
+  width: 38px;
+  height: 38px;
+}
+html[data-large-toolbar="on"] .tb-btn svg {
+  width: 18px;
+  height: 18px;
+}

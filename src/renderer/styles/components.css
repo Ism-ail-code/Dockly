@@ -1,0 +1,566 @@
+/* ============================================================
+   Dockly Components
+   ============================================================ */
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--t-13);
+  font-weight: 550;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--dur-1) var(--ease-io),
+    border-color var(--dur-1) var(--ease-io),
+    transform var(--dur-1) var(--ease-io),
+    box-shadow var(--dur-2) var(--ease-io),
+    color var(--dur-1) var(--ease-io);
+}
+.btn:hover {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+.btn:active {
+  transform: scale(0.96);
+}
+.btn:disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 1px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+  box-shadow: var(--shadow-accent);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: transparent;
+  color: var(--accent-ink);
+  box-shadow: 0 6px 22px var(--accent-glow);
+  transform: translateY(-1px);
+}
+.btn-primary:active {
+  transform: scale(0.97);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+}
+.btn-ghost:hover {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
+.btn-danger {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  border-color: transparent;
+  color: var(--danger);
+}
+.btn-danger:hover {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+}
+
+.btn-icon {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  flex: none;
+}
+.btn-icon.sm {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+.btn-icon.lg {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+}
+
+.btn svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* Press + focus consistency across every interactive control */
+button:focus-visible,
+[role='button']:focus-visible,
+[role='switch']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+.chip:active,
+.accent-dot:active,
+.theme-option:active,
+.color-dot:active,
+.size-dot:active {
+  transform: scale(0.94);
+}
+
+/* ---------- Inputs ---------- */
+.input {
+  width: 100%;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-family: var(--font-ui);
+  font-size: var(--t-14);
+  outline: none;
+  transition: border-color var(--dur-1) var(--ease-io), background var(--dur-1) var(--ease-io), box-shadow var(--dur-2) var(--ease-io);
+}
+.input::placeholder {
+  color: var(--text-3);
+}
+.input:hover {
+  background: var(--surface-3);
+}
+.input:focus {
+  border-color: var(--accent-ring);
+  background: var(--surface-solid);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* ---------- Chips / tags ---------- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 9px;
+  border-radius: 99px;
+  font-size: var(--t-11);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  background: var(--accent-soft);
+  color: var(--accent);
+  transition: background var(--dur-1), transform var(--dur-1);
+  cursor: pointer;
+  border: none;
+}
+.chip:hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  transform: translateY(-1px);
+}
+.chip .chip-x {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  opacity: 0.7;
+  transition: background var(--dur-1), opacity var(--dur-1);
+}
+.chip .chip-x:hover {
+  background: color-mix(in srgb, var(--accent) 28%, transparent);
+  opacity: 1;
+}
+.chip-tag {
+  background: var(--surface-2);
+  color: var(--text-2);
+  cursor: default;
+}
+
+/* ---------- Segmented control ---------- */
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  border: 1px solid transparent;
+}
+.segmented-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--text-2);
+  font-size: var(--t-12);
+  font-weight: 550;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), box-shadow var(--dur-1), transform var(--dur-1);
+}
+.segmented-item:hover {
+  color: var(--text-1);
+}
+.segmented-item.active {
+  background: var(--surface-solid);
+  color: var(--text-1);
+  box-shadow: var(--shadow-1);
+}
+.segmented-item:active {
+  transform: scale(0.95);
+}
+.segmented-item svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  backdrop-filter: blur(var(--glass-blur, 14px));
+  transition: transform var(--dur-2) var(--ease-io), box-shadow var(--dur-2) var(--ease-io), border-color var(--dur-2);
+}
+.card-hover {
+  cursor: pointer;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-2);
+  border-color: var(--border-strong);
+}
+
+/* ---------- Menu ---------- */
+.menu-anchor {
+  position: relative;
+}
+.menu {
+  position: absolute;
+  z-index: 90;
+  min-width: 190px;
+  padding: 5px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface-solid) 92%, transparent);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-3);
+  animation: scaleIn 0.16s var(--ease-out) both;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-1);
+  font-size: var(--t-13);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-1);
+}
+.menu-item:hover {
+  background: var(--accent-soft);
+}
+.menu-item.danger {
+  color: var(--danger);
+}
+.menu-item.danger:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.menu-item svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.75;
+}
+.menu-item.danger svg {
+  opacity: 0.9;
+}
+.menu-item .kbd {
+  margin-left: auto;
+}
+.menu-sep {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--border);
+}
+
+/* ---------- Tooltip (React TooltipHost) ---------- */
+.tooltip {
+  position: fixed;
+  pointer-events: none;
+  z-index: 500;
+  max-width: 300px;
+  padding: 7px 11px;
+  border-radius: 9px;
+  background: var(--surface-solid);
+  color: var(--text-1);
+  font-size: var(--t-12);
+  font-weight: 550;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  white-space: pre-line;
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-3), 0 0 0 3px rgba(0, 0, 0, 0.04);
+  opacity: 0;
+  transform: translateY(4px) scale(0.98);
+  transition: opacity var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out);
+}
+.tooltip.tooltip-bottom.show {
+  transform: translateY(-4px) scale(1);
+}
+.tooltip.tooltip-left.show {
+  transform: translateX(4px) scale(1);
+}
+.tooltip.tooltip-right.show {
+  transform: translateX(-4px) scale(1);
+}
+.tooltip.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* ---------- Toast ---------- */
+.toast-region {
+  position: fixed;
+  top: calc(var(--titlebar-h) + 14px);
+  right: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 300;
+  pointer-events: none;
+}
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 260px;
+  max-width: 380px;
+  padding: 11px 13px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-3);
+  font-size: var(--t-13);
+  font-weight: 500;
+  animation: slideInRight 0.3s var(--ease-out) both;
+  pointer-events: auto;
+}
+.toast.leaving {
+  animation: fadeOut 0.25s var(--ease-io) both;
+}
+@keyframes fadeOut {
+  to { opacity: 0; transform: translateX(16px); }
+}
+.toast-icon {
+  display: flex;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  flex: none;
+}
+.toast-icon.success {
+  background: color-mix(in srgb, var(--ok) 16%, transparent);
+  color: var(--ok);
+}
+.toast-icon.info {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.toast-icon.warn {
+  background: color-mix(in srgb, var(--warn) 18%, transparent);
+  color: var(--warn);
+}
+.toast-icon svg {
+  width: 14px;
+  height: 14px;
+}
+.toast-action {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 7px;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: var(--t-12);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-1), transform var(--dur-1);
+}
+.toast-action:hover {
+  background: var(--accent-hover);
+}
+.toast-action:active {
+  transform: scale(0.94);
+}
+.toast-dismiss {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-3);
+  cursor: pointer;
+  flex: none;
+}
+.toast-dismiss:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+.toast-dismiss svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* ---------- Modal ---------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 250;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--overlay);
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.18s var(--ease-io) both;
+}
+.modal {
+  width: min(480px, calc(100vw - 48px));
+  max-height: min(560px, calc(100vh - 96px));
+  overflow: auto;
+  border-radius: var(--r-xl);
+  background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+  backdrop-filter: blur(30px);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-3);
+  animation: scaleIn 0.22s var(--ease-spring) both;
+  padding: var(--sp-5);
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: var(--t-18);
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+  margin-top: var(--sp-5);
+}
+
+/* ---------- Empty state ---------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--sp-8) var(--sp-5);
+  gap: var(--sp-2);
+}
+.empty-art {
+  width: 88px;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 28px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-bottom: var(--sp-3);
+  animation: pulseGlow 3.2s ease-in-out infinite;
+  position: relative;
+}
+.empty-art::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: 36px;
+  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+  z-index: -1;
+}
+.empty-art svg {
+  width: 40px;
+  height: 40px;
+  stroke-width: 1.6;
+}
+.empty-title {
+  font-family: var(--font-display);
+  font-size: var(--t-18);
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+.empty-sub {
+  max-width: 340px;
+  font-size: var(--t-13);
+  color: var(--text-2);
+  line-height: 1.55;
+}
+.empty-cta {
+  margin-top: var(--sp-3);
+}
+
+/* ---------- Skeleton ---------- */
+.skeleton {
+  border-radius: var(--r-lg);
+  background: linear-gradient(90deg, var(--surface-2) 25%, var(--surface-3) 50%, var(--surface-2) 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+}
+
+/* ---------- Section headers ---------- */
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-4);
+}
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: var(--t-16);
+  font-weight: 620;
+  letter-spacing: -0.01em;
+}
+.section-title svg {
+  width: 17px;
+  height: 17px;
+  color: var(--accent);
+}
