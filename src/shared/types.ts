@@ -1,0 +1,137 @@
+export type AccentColor =
+  | 'indigo'
+  | 'violet'
+  | 'sky'
+  | 'teal'
+  | 'emerald'
+  | 'amber'
+  | 'orange'
+  | 'rose'
+  | 'pink'
+  | 'slate';
+
+export type ThemeName = 'light' | 'dark' | 'midnight';
+
+export interface Subject {
+  id: string;
+  name: string;
+  icon: string;
+  color: AccentColor;
+  sortOrder: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface SubjectStats {
+  noteCount: number;
+  lastModified: number;
+}
+
+export interface Note {
+  id: string;
+  subjectId: string;
+  title: string;
+  content: string; // TipTap JSON
+  isFavorite: boolean;
+  isArchived: boolean;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+  screenshotCount: number;
+  preview: string;
+}
+
+export interface VersionSnapshot {
+  id: number;
+  noteId: string;
+  content: string;
+  createdAt: number;
+}
+
+export interface SearchResult {
+  subject: Subject;
+  notes: Note[];
+}
+
+export interface SearchQuery {
+  q: string;
+  scope: 'all' | 'favorites' | 'archived';
+  limit?: number;
+}
+
+export interface Settings {
+  // Appearance
+  theme: ThemeName;
+  accent: AccentColor;
+  animations: boolean;
+  compactMode: boolean;
+  largeToolbarIcons: boolean;
+  showTooltips: boolean;
+  sounds: boolean;
+  // Sidebar (dock)
+  dockOnTop: boolean;
+  dockAutoHide: boolean;
+  dockRememberPosition: boolean;
+  dockRememberWidth: boolean;
+  dockTransparencyEnabled: boolean;
+  dockTransparencySlider: boolean;
+  dockTransparency: number; // 0.4 - 1, applied only when transparency is enabled
+  dockSide: 'left' | 'right';
+  dockWidth: number;
+  // Editor
+  autoSave: boolean;
+  showLineNumbers: boolean;
+  markdownShortcuts: boolean;
+  richText: boolean;
+  spellCheck: boolean;
+  // Clipboard
+  autoInsertScreenshots: boolean;
+  autoCaptureText: boolean;
+  confirmBeforeInsert: boolean;
+  ignoreDuplicateClipboard: boolean;
+  // Study
+  focusMode: boolean;
+  studyTimer: boolean;
+  readingProgress: boolean;
+  sessionResume: boolean;
+  dailyStats: boolean;
+  // General / Advanced
+  launchOnStartup: boolean;
+  onboarded: boolean;
+  lastSubjectId: string | null;
+  lastNoteId: string | null;
+}
+
+export interface ScreenshotMeta {
+  id: string;
+  noteId: string;
+  path: string;
+  width: number;
+  height: number;
+  createdAt: number;
+}
+
+export interface PendingScreenshot {
+  available: boolean;
+  width: number;
+  height: number;
+  capturedAt: number;
+}
+
+export interface DockConfig {
+  open: boolean;
+  noteId: string | null;
+  side: 'left' | 'right';
+  width: number;
+  collapsed: boolean;
+  locked: boolean;
+  opacity: number;
+  focusMode: boolean;
+  onTop: boolean;
+}
+
+export interface NoteContentUpdate {
+  noteId: string;
+  content: string;
+  updatedAt: number;
+}
