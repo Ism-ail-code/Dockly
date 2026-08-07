@@ -1,0 +1,652 @@
+import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
+import {
+  ArrowLeft,
+  Check,
+  ClipboardList,
+  GraduationCap,
+  FolderOpen,
+  Info,
+  Keyboard,
+  Monitor,
+  Palette,
+  PanelRight,
+  PenLine,
+  Plus,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  Wrench,
+  X,
+} from 'lucide-react';
+import { useApp } from '@/app/store';
+import { Kbd, useToast } from '@/components/ui';
+import { ToggleRow } from '@/components/Toggle';
+import { ACCENT_COLORS, SHORTCUTS } from '@shared/defaults';
+import type { AccentColor, Settings } from '@shared/types';
+
+const THEMES = [
+  { id: 'light', label: 'Light', swatch: ['#f3f4f8', '#ffffff'] },
+  { id: 'dark', label: 'Dark', swatch: ['#101318', '#1a1e26'] },
+  { id: 'midnight', label: 'Midnight', swatch: ['#0a0d16', '#121625'] },
+] as const;
+
+type BoolKeys = { [K in keyof Settings]-?: Settings[K] extends boolean ? K : never }[keyof Settings];
+type RowBase = { title: string; desc: string; keywords?: string; visible?: (s: Settings) => boolean };
+type Row =
+  | (RowBase & { kind: 'toggle'; key: BoolKeys })
+  | (RowBase & { kind: 'slider'; key: 'dockTransparency'; min: number; max: number; step: number })
+  | (RowBase & { kind: 'custom'; render: (s: Settings, set: <K extends keyof Settings>(k: K, v: Settings[K]) => void) => ReactNode });
+
+interface Category {
+  id: string;
+  title: string;
+  icon: ReactNode;
+  rows: Row[];
+}
+
+function buildCategories(onReset: () => void): Category[] {
+  return [
+  {
+    id: 'general',
+    title: 'General',
+    icon: <SlidersHorizontal size={15} />,
+    rows: [
+      {
+        kind: 'toggle',
+        key: 'launchOnStartup',
+        title: 'Launch at startup',
+        desc: 'Open Dockly automatically when you sign in to Windows',
+        keywords: 'startup boot autostart general',
+      },
+      {
+        kind: 'toggle',
+        key: 'sessionResume',
+        title: 'Session resume',
+        desc: 'Reopen the last note you were working on when Dockly starts',
+        keywords: 'resume reopen continue study last note',
+      },
+    ],
+  },  {
+    id: 'appearance',
+    title: 'Appearance',
+    icon: <Palette size={15} />,
+    rows: [
+      {
+        kind: 'custom',
+        title: 'Theme',
+        desc: 'Light for daytime, Midnight for late-night sessions',
+        keywords: 'theme dark light midnight color',
+        render: (s, set) => (
+          <div className="theme-picker">
+            {THEMES.map((t) => (
+              <button
+                key={t.id}
+                className={`theme-option${s.theme === t.id ? ' active' : ''}`}
+                onClick={() => void set('theme', t.id)}
+                data-tooltip={`${t.label} theme`}
+              >
+                <div className="theme-swatch" style={{ background: `linear-gradient(135deg, ${t.swatch[0]}, ${t.swatch[1]})` }}>
+                  {s.theme === t.id && <Check size={13} />}
+                </div>
+                <span>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        ),
+      },
+      {
+        kind: 'custom',
+        title: 'Accent color',
+        desc: 'Used across buttons, highlights and the dock',
+        keywords: 'accent color highlight brand',
+        render: (s, set) => (
+          <div className="accent-picker">
+            {ACCENT_COLORS.map((c) => (
+              <button
+                key={c.name}
+                className={`accent-dot${s.accent === c.name ? ' active' : ''}`}
+                style={{ background: dotColor(c.name) }}
+                onClick={() => void set('accent', c.name)}
+                data-tooltip={c.label}
+                aria-label={c.label}
+              >
+                {s.accent === c.name && <Check size={11} />}
+              </button>
+            ))}
+          </div>
+        ),
+      },
+      {
+        kind: 'toggle',
+        key: 'animations',
+        title: 'Enable animations',
+        desc: 'Animate view transitions, dialogs and hover effects',
+        keywords: 'motion animation transitions animate smooth',
+      },
+      {
+        kind: 'toggle',
+        key: 'compactMode',
+        title: 'Compact mode',
+        desc: 'Tighter spacing so more content fits on screen',
+        keywords: 'dense compact tight small density',
+      },
+      {
+        kind: 'toggle',
+        key: 'largeToolbarIcons',
+        title: 'Large toolbar icons',
+        desc: 'Bigger, easier-to-hit buttons in the editor toolbar',
+        keywords: 'icons size large buttons toolbar accessibility',
+      },
+      {
+        kind: 'toggle',
+        key: 'showTooltips',
+        title: 'Show tooltips on hover',
+        desc: 'Display helpful hints when hovering over buttons',
+        keywords: 'tooltip hints help hover labels',
+      },
+      {
+        kind: 'toggle',
+        key: 'sounds',
+        title: 'Sound effects',
+        desc: 'Play subtle sounds for actions like inserting screenshots',
+        keywords: 'sound audio beep effects feedback',
+      },
+    ],
+  },
+  {
+    id: 'sidebar',
+    title: 'Sidebar',
+    icon: <PanelRight size={15} />,
+    rows: [
+      {
+        kind: 'toggle',
+        key: 'dockOnTop',
+        title: 'Always on top',
+        desc: 'The docked note stays visible over other apps',
+        keywords: 'dock pin topmost always on top overlay',
+      },
+      {
+        kind: 'toggle',
+        key: 'dockAutoHide',
+        title: 'Auto-hide',
+        desc: 'Tuck the dock away while Dockly is focused; show it when you switch away',
+        keywords: 'dock autohide hide collapse sidebar peek',
+      },
+      {
+        kind: 'toggle',
+        key: 'dockRememberPosition',
+        title: 'Remember dock position',
+        desc: 'Keep the dock on the same side of the screen across restarts',
+        keywords: 'dock position side left right remember persist',
+      },
+      {
+        kind: 'toggle',
+        key: 'dockRememberWidth',
+        title: 'Remember dock width',
+        desc: 'Restore your custom dock width after restarting',
+        keywords: 'dock width size remember persist resize',
+      },
+      {
+        kind: 'toggle',
+        key: 'dockTransparencyEnabled',
+        title: 'Enable transparency',
+        desc: 'Make the dock window see-through at its stored opacity',
+        keywords: 'dock transparent opacity see-through glass',
+      },
+      {
+        kind: 'toggle',
+        key: 'dockTransparencySlider',
+        title: 'Transparency slider',
+        desc: 'Show the opacity slider in this panel',
+        keywords: 'transparency slider opacity control',
+      },
+      {
+        kind: 'slider',
+        key: 'dockTransparency',
+        title: 'Dock opacity',
+        desc: 'How see-through the dock appears (0.4 – 1)',
+        min: 0.4,
+        max: 1,
+        step: 0.05,
+        visible: (s) => s.dockTransparencyEnabled && s.dockTransparencySlider,
+      },
+    ],
+  },
+  {
+    id: 'editor',
+    title: 'Editor',
+    icon: <PenLine size={15} />,
+    rows: [
+      {
+        kind: 'toggle',
+        key: 'autoSave',
+        title: 'Auto-save notes',
+        desc: 'Save your notes automatically as you type',
+        keywords: 'autosave save persist editor',
+      },
+      {
+        kind: 'toggle',
+        key: 'showLineNumbers',
+        title: 'Show line numbers',
+        desc: 'Display a line-number gutter beside the document',
+        keywords: 'lines gutter numbers linenumber',
+      },
+      {
+        kind: 'toggle',
+        key: 'markdownShortcuts',
+        title: 'Markdown shortcuts',
+        desc: 'Type #, -, 1. or ** to format as you write',
+        keywords: 'markdown shortcut formatting syntax type',
+      },
+      {
+        kind: 'toggle',
+        key: 'richText',
+        title: 'Rich text formatting',
+        desc: 'Show the formatting toolbar (bold, lists, tables…)',
+        keywords: 'rich text toolbar formatting bold lists',
+      },
+      {
+        kind: 'toggle',
+        key: 'spellCheck',
+        title: 'Spell checking',
+        desc: 'Underline misspelled words while typing',
+        keywords: 'spellcheck spelling grammar underline dictionary',
+      },
+    ],
+  },
+  {
+    id: 'clipboard',
+    title: 'Clipboard',
+    icon: <ClipboardList size={15} />,
+    rows: [
+      {
+        kind: 'toggle',
+        key: 'autoInsertScreenshots',
+        title: 'Auto-insert screenshots',
+        desc: 'Win + Shift + S snips land in the active note automatically',
+        keywords: 'screenshot snip insert capture clipboard',
+      },
+      {
+        kind: 'toggle',
+        key: 'autoCaptureText',
+        title: 'Capture copied text',
+        desc: 'Ctrl + C copies drop into the active note as text',
+        keywords: 'text copy ctrl-c clipboard paste capture',
+      },
+      {
+        kind: 'toggle',
+        key: 'confirmBeforeInsert',
+        title: 'Confirm before inserting',
+        desc: 'Ask before a screenshot is added to your note',
+        keywords: 'confirm prompt ask dialog screenshot',
+      },
+      {
+        kind: 'toggle',
+        key: 'ignoreDuplicateClipboard',
+        title: 'Ignore duplicate clipboard content',
+        desc: 'Skip clipboard content identical to the last capture',
+        keywords: 'duplicate dedupe skip repeat clipboard',
+      },
+    ],
+  },
+  {
+    id: 'study',
+    title: 'Study',
+    icon: <GraduationCap size={15} />,
+    rows: [
+      {
+        kind: 'toggle',
+        key: 'focusMode',
+        title: 'Focus mode',
+        desc: 'Minimize dock chrome for distraction-free studying',
+        keywords: 'focus distraction minimal clean dock',
+      },
+      {
+        kind: 'toggle',
+        key: 'studyTimer',
+        title: 'Study timer',
+        desc: 'Show an elapsed-time session timer in the editor',
+        keywords: 'timer study session stopwatch pomodoro',
+      },
+      {
+        kind: 'toggle',
+        key: 'readingProgress',
+        title: 'Reading progress',
+        desc: 'Show a progress bar as you scroll through a note',
+        keywords: 'reading progress scroll bar position',
+      },
+      {
+        kind: 'toggle',
+        key: 'dailyStats',
+        title: 'Daily study statistics',
+        desc: "Show today's notes, screenshots and edits on the dashboard",
+        keywords: 'stats statistics daily analytics dashboard today',
+      },
+    ],
+  },
+  {
+    id: 'advanced',
+    title: 'Advanced',
+    icon: <Wrench size={15} />,
+    rows: [
+      {
+        kind: 'custom',
+        title: 'Reset all preferences',
+        desc: 'Restore every preference to its default value',
+        keywords: 'reset restore defaults clear preferences',
+        render: (_s, _set) => (
+          <button
+            className="btn btn-ghost btn-danger-ghost"
+            data-tooltip="Reset all preferences to defaults"
+            onClick={onReset}
+          >
+            <RotateCcw size={14} />
+            Reset…
+          </button>
+        ),
+      },
+    ],
+  },
+];
+}
+
+export function SettingsView() {
+  const settings = useApp((s) => s.settings);
+  const setSetting = useApp((s) => s.setSetting);
+  const goBack = useApp((s) => s.goBack);
+  const subjects = useApp((s) => s.subjects);
+  const refreshSubjects = useApp((s) => s.refreshSubjects);
+  const refreshNotes = useApp((s) => s.refreshNotes);
+  const toast = useToast();
+
+  const [q, setQ] = useState('');
+  const [newSubject, setNewSubject] = useState('');
+  const [confirm, setConfirm] = useState<{ kind: 'delete-subject' | 'reset-settings'; id?: string; name?: string } | null>(null);
+
+  const searching = q.trim().length > 0;
+  const needle = q.trim().toLowerCase();
+
+  const rowMatches = (row: Row): boolean => {
+    if (!searching) return true;
+    const hay = `${row.title} ${row.desc} ${row.keywords ?? ''}`.toLowerCase();
+    return hay.includes(needle);
+  };
+
+  const filtered = useMemo(
+    () =>
+      buildCategories(() => setConfirm({ kind: 'reset-settings' }))
+        .map((cat) => ({
+          ...cat,
+          rows: cat.rows.filter((r) => rowMatches(r) && !(r.visible && !r.visible(settings))),
+        }))
+        .filter((cat) => cat.rows.length > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [searching, needle, settings],
+  );
+
+  const totalMatches = filtered.reduce((a, c) => a + c.rows.length, 0);
+
+  const addSubject = async () => {
+    const name = newSubject.trim();
+    if (!name) return;
+    const colors: AccentColor[] = ['indigo', 'violet', 'sky', 'teal', 'emerald', 'amber', 'orange', 'rose', 'pink'];
+    const color = colors[subjects.length % colors.length];
+    await window.dockly.subjects.create({ name, icon: 'layers', color });
+    setNewSubject('');
+    await refreshSubjects();
+  };
+
+  const removeSubject = async (id: string) => {
+    await window.dockly.subjects.delete(id);
+    setConfirm(null);
+    await Promise.all([refreshSubjects(), refreshNotes()]);
+  };
+
+  const resetAll = async () => {
+    setConfirm(null);
+    await window.dockly.settings.reset();
+    toast.success('All preferences reset to defaults');
+  };
+
+  return (
+    <div className="settings-view view-enter">
+      <div className="sub-head">
+        <button className="btn btn-icon btn-ghost" onClick={goBack} data-tooltip="Back">
+          <ArrowLeft />
+        </button>
+        <div className="sub-title t-display">Preferences</div>
+      </div>
+
+      <div className="settings-search">
+        <Search size={14} />
+        <input
+          className="input"
+          placeholder="Search settings…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          aria-label="Search settings"
+        />
+        {searching && (
+          <button className="btn btn-icon btn-ghost sm" onClick={() => setQ('')} data-tooltip="Clear search">
+            <X size={13} />
+          </button>
+        )}
+      </div>
+
+      {searching && totalMatches === 0 && (
+        <div className="settings-empty">
+          <div className="settings-empty-icon">
+            <Search size={18} />
+          </div>
+          No settings match “{q.trim()}”
+        </div>
+      )}
+
+      {filtered.map((cat) => (
+        <section key={cat.id} className="settings-section">
+          <div className="settings-section-title">
+            {cat.icon}
+            {cat.title}
+            {searching && <span className="settings-match-count">{cat.rows.length}</span>}
+          </div>
+          {cat.rows.map((row, i) => (
+            <RowControl key={row.kind === 'custom' ? `custom-${i}` : row.kind === 'slider' ? 'slider' : (row.key as string)} row={row} settings={settings} setSetting={setSetting} />
+          ))}
+        </section>
+      ))}
+
+      {/* Subjects */}
+      {!searching && (
+        <section className="settings-section">
+          <div className="settings-section-title">
+            <FolderOpen size={15} />
+            Subjects
+          </div>
+          <div className="subject-manage">
+            {subjects.map((s) => (
+              <div key={s.id} className="subject-manage-item">
+                <span className="subject-manage-icon">{s.name.slice(0, 1).toUpperCase()}</span>
+                <span className="subject-manage-name">{s.name}</span>
+                <span className="subject-manage-count t-sub">
+                  {s.noteCount} {s.noteCount === 1 ? 'note' : 'notes'}
+                </span>
+                <button
+                  className="btn btn-icon btn-ghost sm"
+                  data-tooltip="Delete subject"
+                  onClick={() => setConfirm({ kind: 'delete-subject', id: s.id, name: s.name })}
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            ))}
+            <div className="subject-manage-add">
+              <input
+                className="input"
+                placeholder="New subject name…"
+                value={newSubject}
+                onChange={(e) => setNewSubject(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && void addSubject()}
+              />
+              <button className="btn btn-primary" onClick={() => void addSubject()} disabled={!newSubject.trim()} data-tooltip="Add this subject">
+                <Plus size={14} />
+                Add
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Shortcuts */}
+      {!searching && (
+        <section className="settings-section">
+          <div className="settings-section-title">
+            <Keyboard size={15} />
+            Keyboard shortcuts
+          </div>
+          <div className="shortcut-grid">
+            {SHORTCUTS.map((s) => (
+              <div key={s.keys + s.label} className="shortcut-row">
+                <div className="shortcut-label">{s.label}</div>
+                <div className="shortcut-scope t-sub">{s.scope}</div>
+                <Kbd>{s.keys}</Kbd>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* About */}
+      {!searching && (
+        <section className="settings-section">
+          <div className="settings-section-title">
+            <Info size={15} />
+            About
+          </div>
+          <div className="settings-row" style={{ border: 'none' }}>
+            <div className="settings-label">
+              <div className="settings-name">Dockly v0.1</div>
+              <div className="settings-desc">
+                Offline first — all data lives on this PC.
+                <br />
+                <Monitor size={11} style={{ verticalAlign: -1 }} /> Preferences apply instantly — no restart needed.
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {confirm?.kind === 'delete-subject' && (
+        <div className="modal-backdrop" onClick={() => setConfirm(null)}>
+          <div className="modal" style={{ width: 380 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="modal-title">Delete subject?</div>
+            </div>
+            <div className="modal-body">
+              <p className="t-sub">
+                <b>“{confirm.name}”</b> and all of its notes will be permanently deleted. This cannot be undone.
+              </p>
+            </div>
+            <div className="modal-foot">
+              <button className="btn" onClick={() => setConfirm(null)} data-tooltip="Keep the subject">
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={() => confirm.id && void removeSubject(confirm.id)}>
+                <Trash2 size={14} />
+                Delete forever
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirm?.kind === 'reset-settings' && (
+        <div className="modal-backdrop" onClick={() => setConfirm(null)}>
+          <div className="modal" style={{ width: 380 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="modal-title">Reset all preferences?</div>
+            </div>
+            <div className="modal-body">
+              <p className="t-sub">
+                Every preference — appearance, dock behavior, editor and clipboard options — returns to its default value.
+              </p>
+            </div>
+            <div className="modal-foot">
+              <button className="btn" onClick={() => setConfirm(null)} data-tooltip="Keep current preferences">
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={() => void resetAll()}>
+                <RotateCcw size={14} />
+                Reset everything
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RowControl({
+  row,
+  settings,
+  setSetting,
+}: {
+  row: Row;
+  settings: Settings;
+  setSetting: <K extends keyof Settings>(k: K, v: Settings[K]) => void;
+}) {
+  if (row.kind === 'toggle') {
+    return (
+      <ToggleRow
+        title={row.title}
+        desc={row.desc}
+        checked={settings[row.key] as boolean}
+        onChange={(v) => setSetting(row.key, v)}
+      />
+    );
+  }
+  if (row.kind === 'slider') {
+    return (
+      <div className="settings-row">
+        <div className="settings-label">
+          <div className="settings-name">{row.title}</div>
+          <div className="settings-desc">{row.desc}</div>
+        </div>
+        <div className="settings-slider-group">
+          <input
+            type="range"
+            min={row.min}
+            max={row.max}
+            step={row.step}
+            value={settings[row.key]}
+            onChange={(e) => void setSetting(row.key, Number(e.target.value))}
+            className="slider"
+            style={{ width: 180 }}
+            aria-label={row.title}
+          />
+          <span className="settings-slider-value t-sub">{Math.round(settings[row.key] * 100)}%</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div className="settings-row">
+      <div className="settings-label">
+        <div className="settings-name">{row.title}</div>
+        <div className="settings-desc">{row.desc}</div>
+      </div>
+      {row.render(settings, setSetting)}
+    </div>
+  );
+}
+
+function dotColor(name: AccentColor): string {
+  const map: Record<AccentColor, string> = {
+    indigo: '#6366f1', violet: '#8b5cf6', sky: '#0ea5e9', teal: '#14b8a6',
+    emerald: '#10b981', amber: '#f5a90b', orange: '#f97316', rose: '#f43f5e',
+    pink: '#ec4899', slate: '#64748b',
+  };
+  return map[name];
+}
