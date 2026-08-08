@@ -28,6 +28,10 @@ export const DOCK_MIN_WIDTH = 240;
 export const DOCK_MAX_WIDTH = 520;
 export const DOCK_DEFAULT_WIDTH = 320;
 export const DOCK_COLLAPSED_WIDTH = 44;
+export const DOCK_MIN_HEIGHT = 240;
+// 0 = "auto": use the full work-area height (the original dock behavior).
+// A real value is persisted the first time the user resizes vertically.
+export const DOCK_DEFAULT_HEIGHT = 0;
 
 export const DEFAULT_SETTINGS: Settings = {
   // Appearance
@@ -43,11 +47,13 @@ export const DEFAULT_SETTINGS: Settings = {
   dockAutoHide: false,
   dockRememberPosition: true,
   dockRememberWidth: true,
+  dockRememberHeight: true,
   dockTransparencyEnabled: false,
   dockTransparencySlider: true,
   dockTransparency: 1,
   dockSide: 'right',
   dockWidth: DOCK_DEFAULT_WIDTH,
+  dockHeight: DOCK_DEFAULT_HEIGHT,
   // Editor
   autoSave: true,
   showLineNumbers: false,

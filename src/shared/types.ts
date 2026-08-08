@@ -73,11 +73,13 @@ export interface Settings {
   dockAutoHide: boolean;
   dockRememberPosition: boolean;
   dockRememberWidth: boolean;
+  dockRememberHeight: boolean;
   dockTransparencyEnabled: boolean;
   dockTransparencySlider: boolean;
   dockTransparency: number; // 0.4 - 1, applied only when transparency is enabled
   dockSide: 'left' | 'right';
   dockWidth: number;
+  dockHeight: number; // 0 = auto (full work-area height)
   // Editor
   autoSave: boolean;
   showLineNumbers: boolean;
@@ -123,6 +125,11 @@ export interface DockConfig {
   noteId: string | null;
   side: 'left' | 'right';
   width: number;
+  height: number;
+  y: number;
+  // True when the dock's top edge is not flush with the work-area top, so the
+  // top resize handle is usable (the bottom edge is the fixed anchor).
+  topEdgeFree: boolean;
   collapsed: boolean;
   locked: boolean;
   opacity: number;
