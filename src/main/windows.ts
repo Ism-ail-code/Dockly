@@ -139,9 +139,21 @@ function effectiveDockHeight(): number {
 
 function dockTargetBounds(): Electron.Rectangle {
   const area = workArea();
-  const width = state.dock.collapsed ? DOCK_COLLAPSED_WIDTH : state.dock.width;
-  const x = state.dock.side === 'left' ? area.x : area.x + area.width - width;
-  return { x, y: area.y, width, height: area.height };
+  if (state.dock.collapsed) {
+    return { x: dockXForWidth(DOCK_COLLAPSED_WIDTH), y: area.y, width: DOCK_COLLAPSED_WIDTH, height: area.height };
+  }
+  const width = clampDockWidth(state.dock.width);
+  // Keep the stored height within the current work area (screens change).
+  const height = clampDockHeight(state.dock.height || effectiveDockHeight());
+  // Keep the top edge inside the work area, even after a resolution change.
+  const maxY = area.y + area.height - height;
+  const y = Math.max(area.y, Math.min(maxY, state.dock.y));
+  return { x: dockXForWidth(width), y, width, height };
+}
+
+function dockXForWidth(width: number): number {
+  const area = workArea();
+  return state.dock.side === 'left' ? area.x : area.x + area.width - width;
 }
 
 export function createDockWindow(): BrowserWindow {
