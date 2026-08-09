@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  ArrowLeft,
   Check,
   ClipboardList,
   GraduationCap,
@@ -21,7 +20,7 @@ import {
   X,
 } from 'lucide-react';
 import { useApp } from '@/app/store';
-import { Kbd, useToast } from '@/components/ui';
+import { BackButton, Kbd, useToast } from '@/components/ui';
 import { ToggleRow } from '@/components/Toggle';
 import { ACCENT_COLORS, SHORTCUTS } from '@shared/defaults';
 import type { AccentColor, Settings } from '@shared/types';
@@ -30,6 +29,13 @@ const THEMES = [
   { id: 'light', label: 'Light', swatch: ['#f3f4f8', '#ffffff'] },
   { id: 'dark', label: 'Dark', swatch: ['#101318', '#1a1e26'] },
   { id: 'midnight', label: 'Midnight', swatch: ['#0a0d16', '#121625'] },
+] as const;
+
+const TRANSPARENCY_PRESETS = [
+  { id: 'solid', label: 'Solid', value: 1, desc: 'Fully opaque panel' },
+  { id: 'balanced', label: 'Balanced', value: 0.8, desc: 'Slight see-through, controls stay crisp' },
+  { id: 'glass', label: 'Glass', value: 0.6, desc: 'See-through with a glassy blur' },
+  { id: 'transparent', label: 'Transparent', value: 0.35, desc: 'Maximum see-through — buttons keep their own surfaces' },
 ] as const;
 
 type BoolKeys = { [K in keyof Settings]-?: Settings[K] extends boolean ? K : never }[keyof Settings];
@@ -188,34 +194,56 @@ function buildCategories(onReset: () => void): Category[] {
         desc: 'Restore your custom dock width after restarting',
         keywords: 'dock width size remember persist resize',
       },
+      {
+        kind: 'toggle',
         key: 'dockRememberHeight',
         title: 'Remember dock height',
         desc: 'Restore the dock height after restarting',
         keywords: 'dock height size remember persist resize vertical',
       },
       {
-        kind: 'toggle',
-        key: 'dockTransparencyEnabled',
-        title: 'Enable transparency',
-        desc: 'Make the dock window see-through at its stored opacity',
-        keywords: 'dock transparent opacity see-through glass',
-      },
-      {
-        kind: 'toggle',
-        key: 'dockTransparencySlider',
-        title: 'Transparency slider',
-        desc: 'Show the opacity slider in this panel',
-        keywords: 'transparency slider opacity control',
-      },
-      {
-        kind: 'slider',
-        key: 'dockTransparency',
-        title: 'Dock opacity',
-        desc: 'How see-through the dock appears (0.4 – 1)',
-        min: 0.4,
-        max: 1,
-        step: 0.05,
-        visible: (s) => s.dockTransparencyEnabled && s.dockTransparencySlider,
+        kind: 'custom',
+        title: 'Dock transparency',
+        desc: 'The dock background becomes see-through while buttons and text keep readable surfaces',
+        keywords: 'dock transparent opacity see-through glass acrylic blur preset solid balanced',
+        render: (s, set) => (
+          <div className="dock-transparency">
+            <div className="dock-transparency-presets">
+              {TRANSPARENCY_PRESETS.map((p) => (
+                <button
+                  key={p.id}
+                  className={`dock-transparency-preset${s.dockTransparency === p.value ? ' active' : ''}`}
+                  onClick={() => {
+                    void set('dockTransparencyEnabled', true);
+                    void set('dockTransparency', p.value);
+                  }}
+                  data-tooltip={p.desc}
+                  aria-pressed={s.dockTransparency === p.value}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            <div className="settings-slider-group">
+              <input
+                type="range"
+                min={0.2}
+                max={1}
+                step={0.05}
+                value={s.dockTransparency}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  void set('dockTransparencyEnabled', true);
+                  void set('dockTransparency', v);
+                }}
+                className="slider"
+                style={{ width: 180 }}
+                aria-label="Dock transparency"
+              />
+              <span className="settings-slider-value t-sub">{Math.round(s.dockTransparency * 100)}%</span>
+            </div>
+          </div>
+        ),
       },
     ],
   },
@@ -361,6 +389,7 @@ export function SettingsView() {
   const settings = useApp((s) => s.settings);
   const setSetting = useApp((s) => s.setSetting);
   const goBack = useApp((s) => s.goBack);
+  const prevView = useApp((s) => s.prevView);
   const subjects = useApp((s) => s.subjects);
   const refreshSubjects = useApp((s) => s.refreshSubjects);
   const refreshNotes = useApp((s) => s.refreshNotes);
@@ -418,9 +447,10 @@ export function SettingsView() {
   return (
     <div className="settings-view view-enter">
       <div className="sub-head">
-        <button className="btn btn-icon btn-ghost" onClick={goBack} data-tooltip="Back">
-          <ArrowLeft />
-        </button>
+        <BackButton
+          label={prevView === 'editor' ? 'Return to note' : prevView === 'subject' ? 'Return to subject' : 'Return to dashboard'}
+          onClick={goBack}
+        />
         <div className="sub-title t-display">Preferences</div>
       </div>
 
