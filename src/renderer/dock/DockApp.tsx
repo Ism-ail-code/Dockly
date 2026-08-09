@@ -37,9 +37,6 @@ import { useApp } from '@/app/store';
 import { DocklyLogo } from '@/components/TopBar';
 import { SubjectIcon, timeAgo } from '@/components/ui';
 
-const DOCK_MIN_WIDTH = 240;
-const DOCK_MAX_WIDTH = 520;
-
 interface DockNote {
   note: Note;
   subject?: Subject;
@@ -51,6 +48,9 @@ export function DockApp() {
     noteId: null,
     side: 'right',
     width: 320,
+    height: 0,
+    y: 0,
+    topEdgeFree: false,
     collapsed: false,
     locked: false,
     opacity: 1,
@@ -351,19 +351,31 @@ export function DockApp() {
   const toggleFocus = () => void window.dockly.dock.toggleFocus();
   const togglePin = () => void window.dockly.dock.setOnTop(!settings.dockOnTop);
 
-  // resize handle
-  const onResizePointerDown = useCallback(
-    (e: ReactPointerEvent) => {
+  // resize handle drag logic — unified for every edge/corner
+  type ResizeKind = 'inner' | 'top' | 'bottom' | 'top-inner' | 'bottom-inner';
+  const startResize = useCallback(
+    (e: ReactPointerEvent, kind: ResizeKind) => {
       if (cfg.collapsed || cfg.locked) return;
       e.preventDefault();
-      e.currentTarget.setPointerCapture(e.pointerId);
-      setDragActive(true);
       const startX = e.screenX;
-      const startWidth = cfg.width;
+      const startY = e.screenY;
+      const startW = cfg.width;
+      const startH = cfg.height;
+      setDragActive(true);
       const onMove = (ev: PointerEvent) => {
         const dx = ev.screenX - startX;
-        const next = cfg.side === 'right' ? startWidth - dx : startWidth + dx;
-        void window.dockly.dock.setWidth(Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, next)));
+        const dy = ev.screenY - startY;
+        // The inner edge is on the left when docked right (and vice versa).
+        const nextW = Math.round(cfg.side === 'right' ? startW - dx : startW + dx);
+        let nextH = startH;
+        if (kind === 'bottom' || kind === 'bottom-inner') nextH = Math.round(startH + dy);
+        else if (kind === 'top' || kind === 'top-inner') nextH = Math.round(startH - dy);
+        if (kind === 'inner') {
+          void window.dockly.dock.setWidth(nextW);
+        } else {
+          const fixed: 'top' | 'bottom' = kind === 'top' || kind === 'top-inner' ? 'bottom' : 'top';
+          void window.dockly.dock.setSize(nextW, nextH, fixed);
+        }
       };
       const onUp = () => {
         setDragActive(false);
@@ -373,7 +385,7 @@ export function DockApp() {
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
     },
-    [cfg.collapsed, cfg.locked, cfg.width, cfg.side],
+    [cfg.collapsed, cfg.locked, cfg.width, cfg.height, cfg.side],
   );
 
   const innerEdge = cfg.side === 'right';
@@ -599,14 +611,36 @@ export function DockApp() {
           </div>
         )}
 
-        {/* resize handle on inner edge */}
-        {!cfg.locked && !dragActive && (
-          <div
-            className={`dock-resize ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}
-            onPointerDown={onResizePointerDown}
-          >
-            <GripHorizontal size={12} />
-          </div>
+        {/* resize handles: inner edge (width), top/bottom edges (height), corner squares (both) */}
+        {!cfg.locked && !dragActive && !cfg.focusMode && (
+          <>
+            <div
+              className={`dock-resize ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}
+              onPointerDown={(e) => startResize(e, 'inner')}
+            >
+              <GripHorizontal size={12} />
+            </div>
+            {cfg.topEdgeFree && (
+              <div
+                className={`dock-resize-t${dragActive ? ' active' : ''}`}
+                onPointerDown={(e) => startResize(e, 'top')}
+              />
+            )}
+            <div
+              className={`dock-resize-b${dragActive ? ' active' : ''}`}
+              onPointerDown={(e) => startResize(e, 'bottom')}
+            />
+            {cfg.topEdgeFree && (
+              <div
+                className={`dock-resize-tc ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}
+                onPointerDown={(e) => startResize(e, 'top-inner')}
+              />
+            )}
+            <div
+              className={`dock-resize-bc ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}
+              onPointerDown={(e) => startResize(e, 'bottom-inner')}
+            />
+          </>
         )}
       </div>
     </div>
