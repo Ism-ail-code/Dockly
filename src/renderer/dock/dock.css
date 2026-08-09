@@ -745,6 +745,89 @@ body {
 .dock-resize.active::before {
   opacity: 1;
 }
+/* ---------- top / bottom edge handles (height resize) ---------- */
+.dock-resize-t,
+.dock-resize-b {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  opacity: 0;
+  transition: opacity var(--dur-2);
+  z-index: 10;
+}
+.dock-resize-t {
+  top: -2px;
+}
+.dock-resize-b {
+  bottom: -2px;
+}
+.dock:hover .dock-resize-t,
+.dock:hover .dock-resize-b,
+.dock-resize-t.active,
+.dock-resize-b.active {
+  opacity: 1;
+}
+.dock-resize-t::before,
+.dock-resize-b::before {
+  content: "";
+  position: absolute;
+  left: 14%;
+  right: 14%;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 3px;
+  background: var(--accent-soft);
+  border-radius: 99px;
+  opacity: 0;
+  transition: opacity var(--dur-2);
+}
+.dock-resize-t:hover::before,
+.dock-resize-b:hover::before,
+.dock-resize-t.active::before,
+.dock-resize-b.active::before {
+  opacity: 1;
+}
+
+/* ---------- corner handles (width + height at once) ---------- */
+.dock-resize-tc,
+.dock-resize-bc {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  opacity: 0;
+  transition: opacity var(--dur-2);
+  z-index: 11;
+}
+.dock-resize-tc.left {
+  left: -3px;
+  top: -3px;
+  cursor: nwse-resize;
+}
+.dock-resize-tc.right {
+  right: -3px;
+  top: -3px;
+  cursor: nesw-resize;
+}
+.dock-resize-bc.left {
+  left: -3px;
+  bottom: -3px;
+  cursor: nesw-resize;
+}
+.dock-resize-bc.right {
+  right: -3px;
+  bottom: -3px;
+  cursor: nwse-resize;
+}
+.dock:hover .dock-resize-tc,
+.dock:hover .dock-resize-bc,
+.dock-resize-tc.active,
+.dock-resize-bc.active {
+  opacity: 1;
+}
+
+
 
 /* drag region when unlocked */
 .dock-drag-region {
