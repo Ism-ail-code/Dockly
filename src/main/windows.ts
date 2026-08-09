@@ -1,7 +1,13 @@
 import { BrowserWindow, screen, app } from 'electron';
 import path from 'node:path';
 import { state, hub } from './state';
-import { DOCK_MIN_WIDTH, DOCK_MAX_WIDTH, DOCK_COLLAPSED_WIDTH, DOCK_DEFAULT_WIDTH } from '../shared/defaults';
+import {
+  DOCK_MIN_WIDTH,
+  DOCK_MAX_WIDTH,
+  DOCK_COLLAPSED_WIDTH,
+  DOCK_DEFAULT_WIDTH,
+  DOCK_MIN_HEIGHT,
+} from '../shared/defaults';
 
 const isDev = !app.isPackaged;
 const RENDERER_URL = isDev ? process.env.VITE_DEV_SERVER_URL ?? '' : '';
@@ -108,6 +114,27 @@ export function updateTitlebarTheme(theme: string): void {
 function workArea(): Electron.Rectangle {
   const area = screen.getPrimaryDisplay().workArea;
   return area;
+}
+
+function clampDockWidth(w: number): number {
+  const area = workArea();
+  // Leave the user's app usable even at the widest setting.
+  const max = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, area.width - 300));
+  return Math.max(DOCK_MIN_WIDTH, Math.min(max, Math.round(w)));
+}
+
+function clampDockHeight(h: number): number {
+  const area = workArea();
+  // Never exceed the work area, but never below the minimum either.
+  const max = Math.max(DOCK_MIN_HEIGHT, area.height - 40);
+  return Math.max(DOCK_MIN_HEIGHT, Math.min(area.height, Math.min(max, Math.round(h))));
+}
+
+/** The height the dock should use now: remembered, clamped, or full height. */
+function effectiveDockHeight(): number {
+  const s = state.settings;
+  const remembered = s?.dockRememberHeight && (s.dockHeight ?? 0) > 0 ? s.dockHeight : 0;
+  return remembered > 0 ? clampDockHeight(remembered) : workArea().height;
 }
 
 function dockTargetBounds(): Electron.Rectangle {
