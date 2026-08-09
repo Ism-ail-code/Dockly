@@ -28,6 +28,9 @@ interface AppState {
   subjects: Array<Subject & SubjectStats>;
   notes: Note[];
   view: View;
+  // The view that was showing before the current one — lets "Back" return
+  // wherever the user came from (Settings/Archive return to their origin).
+  prevView: View;
   currentSubjectId: string | null;
   currentNoteId: string | null;
   navFrom: 'dashboard' | 'subject';
@@ -80,6 +83,7 @@ export const useApp = create<AppState>((set, get) => ({
   subjects: [],
   notes: [],
   view: 'dashboard',
+  prevView: 'dashboard',
   currentSubjectId: null,
   currentNoteId: null,
   navFrom: 'dashboard',
@@ -91,13 +95,13 @@ export const useApp = create<AppState>((set, get) => ({
     noteId: null,
     side: 'right',
     width: 320,
+    height: 0,
+    y: 0,
+    topEdgeFree: false,
     collapsed: false,
     locked: false,
     opacity: 1,
     focusMode: false,
-    height: 0,
-    y: 0,
-    topEdgeFree: false,
     onTop: true,
   },
   pendingShot: null,
@@ -144,18 +148,24 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   setView: (v) => {
-    set({ view: v });
+    const s = get();
+    set({ view: v, prevView: v === s.view ? s.prevView : s.view });
     void get().reportCaptureMode();
   },
 
   openSubject: async (id) => {
-    set({ currentSubjectId: id, view: 'subject' });
+    const s = get();
+    set({ currentSubjectId: id, view: 'subject', prevView: s.view });
     await get().refreshNotes(id);
     void get().reportCaptureMode();
   },
 
   openNote: async (id) => {
-    set({ currentNoteId: id, view: 'editor' });
+    const s = get();
+    // Remember where the user came from so Back lands on the right screen:
+    // a note opened from a subject list returns to that subject.
+    const from = s.view === 'subject' ? 'subject' : 'dashboard';
+    set({ currentNoteId: id, view: 'editor', navFrom: from, prevView: s.view });
     await window.dockly.notes.get(id);
     await Promise.all([get().refreshNotes(), get().refreshRecents(), get().refreshFavorites()]);
     // Remember where the user left off (used by session resume).
@@ -166,12 +176,16 @@ export const useApp = create<AppState>((set, get) => ({
   goBack: () => {
     const s = get();
     if (s.view === 'editor') {
-      set({ currentNoteId: null, versionOpen: false, view: s.navFrom });
+      // Keep currentNoteId so the last note stays selected (re-opening the
+      // editor or the dock restores it immediately).
+      set({ versionOpen: false, view: s.navFrom, prevView: 'editor' });
       void get().refreshNotes(s.currentSubjectId ?? undefined);
     } else if (s.view === 'subject') {
       set({ currentSubjectId: null, view: 'dashboard' });
     } else if (s.view === 'settings' || s.view === 'archive') {
-      set({ view: 'dashboard' });
+      // Return to wherever the user came from; never into settings/archive.
+      const target: View = s.prevView === 'editor' || s.prevView === 'subject' ? s.prevView : 'dashboard';
+      set({ view: target });
     }
     void get().reportCaptureMode();
   },
@@ -245,7 +259,11 @@ export const useApp = create<AppState>((set, get) => ({
   pushRemoteContent: (c) => set({ remoteContent: c }),
   clearRemoteContent: () => set({ remoteContent: null }),
 
-  deleteNoteLocal: (id) => set({ notes: get().notes.filter((n) => n.id !== id) }),
+  deleteNoteLocal: (id) =>
+    set((s) => ({
+      notes: s.notes.filter((n) => n.id !== id),
+      currentNoteId: s.currentNoteId === id ? null : s.currentNoteId,
+    })),
 
   reportCaptureMode: async () => {
     const s = get();
