@@ -194,6 +194,7 @@ export function DockApp() {
     },
     [settings.markdownShortcuts, settings.spellCheck],
   );
+
   // Always-fresh editor reference (the useEditor instance is recreated when
   // markdownShortcuts/spellCheck change; callbacks must never hold a dead one).
   const editorRef = useRef(editor);
@@ -427,6 +428,10 @@ export function DockApp() {
 
   const innerEdge = cfg.side === 'right';
   const roomy = cfg.width >= 360;
+  // compact-layout flags: adapt chrome to small dock sizes
+  const narrow = cfg.width < 270;
+  const short = cfg.height > 0 && cfg.height < 340;
+  const mini = cfg.height > 0 && cfg.height < 290;
 
   if (cfg.collapsed) {
     return (
@@ -442,7 +447,11 @@ export function DockApp() {
   }
 
   return (
-    <div className={`dock dock-expanded side-${cfg.side}${cfg.focusMode ? ' focus' : ''}`} data-translucent={settings.dockTransparencyEnabled ? 'on' : 'off'}>
+    <div
+      className={`dock dock-expanded side-${cfg.side}${cfg.focusMode ? ' focus' : ''}${narrow ? ' narrow' : ''}${short ? ' short' : ''}${mini ? ' mini' : ''}`}
+      data-translucent={settings.dockTransparencyEnabled ? 'on' : 'off'}
+      style={{ '--dock-alpha': String(settings.dockTransparency) } as CSSProperties}
+    >
       <div className="dock-panel">
         {/* header */}
         <div className="dock-head" style={!cfg.locked ? ({ WebkitAppRegion: 'drag' } as CSSProperties) : undefined}>
@@ -452,18 +461,18 @@ export function DockApp() {
           </div>
           <div className="dock-head-actions" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
             {!cfg.focusMode && (
-              <button className="dock-btn dock-btn-new" onClick={newNote} data-tooltip="New note">
+              <button className="dock-btn dock-btn-new" onClick={newNote} data-tooltip="Create a new sticky note">
                 <Plus size={13} />
                 {roomy && <span className="dock-btn-label">New</span>}
               </button>
             )}
             {!cfg.focusMode && (
-              <button className="dock-btn" onClick={() => openMain('dashboard')} data-tooltip="Open library (dashboard)">
+              <button className="dock-btn" onClick={() => openMain('dashboard')} data-tooltip="View and organize all your notes">
                 <LayoutDashboard size={13} />
               </button>
             )}
             {!cfg.focusMode && (
-              <button className="dock-btn" onClick={() => openMain('settings')} data-tooltip="Preferences">
+              <button className="dock-btn" onClick={() => openMain('settings')} data-tooltip="Customize Dockly — themes, transparency, subjects and shortcuts">
                 <SettingsIcon size={13} />
               </button>
             )}
@@ -579,7 +588,7 @@ export function DockApp() {
               </>
             ) : (
               <div className="dock-note-empty">
-                <button className="dock-note-cta" onClick={newNote} data-tooltip="Create a note and start writing">
+                <button className="dock-note-cta" onClick={newNote}>
                   <Plus size={16} />
                   Start writing
                 </button>
@@ -598,7 +607,7 @@ export function DockApp() {
                   key={r.note.id}
                   className={`dock-recent${r.note.id === note?.id ? ' active' : ''}`}
                   onClick={() => void loadNote(r.note.id)}
-                  data-tooltip={r.note.title || 'Untitled note'}
+                  aria-pressed={r.note.id === note?.id}
                 >
                   <span className="dock-subject-dot" />
                   <span className="dock-recent-main">
@@ -613,6 +622,8 @@ export function DockApp() {
                       void toggleFavorite(r.note.id);
                     }}
                     role="button"
+                    data-tooltip={r.note.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                    data-tooltip-delay="300"
                     aria-label={r.note.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                   >
                     <Star size={11} fill={r.note.isFavorite ? 'currentColor' : 'none'} />
