@@ -51,8 +51,17 @@ if (match) {
   }
   console.log('E2E_RESULT:', JSON.stringify(result, null, 2));
   if (result.error) pass = false;
-  else if (result.onboardingDone && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0) {
+  else if (result.onboardingDone && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0 && result.rapidSwitch?.ok === true && result.dockUi?.ok === true && result.nav?.ok === true) {
     console.log('E2E CHECKS PASSED');
+  } else if (result.nav?.ok === false) {
+    console.log('E2E CHECKS FAILED (navigation round-trips)');
+    pass = false;
+  } else if (result.rapidSwitch?.ok === false) {
+    console.log('E2E CHECKS FAILED (rapid-switch instability)');
+    pass = false;
+  } else if (result.dockUi?.ok === false) {
+    console.log('E2E CHECKS FAILED (dock UI interactions)');
+    pass = false;
   } else {
     console.log('E2E CHECKS FAILED (unexpected values)');
     pass = false;
