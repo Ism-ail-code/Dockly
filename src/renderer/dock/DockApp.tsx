@@ -74,6 +74,15 @@ export function DockApp() {
   const recentsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastServerContent = useRef('');
+  // Monotonic token so the LAST requested note always wins (rapid-click safety).
+  const loadSeq = useRef(0);
+  // The note id currently rendered — lets us skip redundant re-loads.
+  const loadedNoteId = useRef<string | null>(null);
+  // Always-fresh note id for editor callbacks (avoids stale closures on switch).
+  const activeNoteId = useRef<string | null>(null);
+  // Always-fresh settings for editor callbacks.
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
 
   const effectiveSubjectId = note?.subjectId ?? curSubjectId ?? settings.lastSubjectId ?? subjects[0]?.id ?? null;
   const subject = subjects.find((s) => s.id === effectiveSubjectId);
@@ -93,15 +102,12 @@ export function DockApp() {
         const payload = p as { noteId: string | null; from: string };
         if (payload.from === 'dock') return;
         if (!payload.noteId) {
+          loadedNoteId.current = null;
+          activeNoteId.current = null;
           setNote(null);
           return;
         }
-        void window.dockly.notes.get(payload.noteId).then((n) => {
-          if (!n) return;
-          setNote(n);
-          setTitle(n.title);
-          lastServerContent.current = n.content;
-        });
+        void loadNote(payload.noteId);
       }),
     ];
     void (async () => {
@@ -130,20 +136,6 @@ export function DockApp() {
       .map((note) => ({ note, subject: subjectById.get(note.subjectId) }));
     setRecents(rows);
   }, []);
-
-  // ---------- load the active note ----------
-  useEffect(() => {
-    if (!cfg.noteId) {
-      setNote(null);
-      return;
-    }
-    void window.dockly.notes.get(cfg.noteId).then((n) => {
-      if (!n) return;
-      setNote(n);
-      setTitle(n.title);
-      lastServerContent.current = n.content;
-    });
-  }, [cfg.noteId]);
 
   // ---------- subject note count ----------
   useEffect(() => {
@@ -197,6 +189,10 @@ export function DockApp() {
     },
     [settings.markdownShortcuts, settings.spellCheck],
   );
+  // Always-fresh editor reference (the useEditor instance is recreated when
+  // markdownShortcuts/spellCheck change; callbacks must never hold a dead one).
+  const editorRef = useRef(editor);
+  editorRef.current = editor;
 
   // With auto-save off, protect dock edits by saving when the window loses focus.
   useEffect(() => {
@@ -213,7 +209,7 @@ export function DockApp() {
     const off = window.dockly.on('sync:note-content', (c) => {
       const payload = c as { noteId: string; content: string; from: string };
       if (payload.from === 'dock') return;
-      if (payload.noteId !== note?.id) return;
+      if (payload.noteId !== activeNoteId.current) return;
       const content = typeof payload.content === 'string' ? payload.content : JSON.stringify(payload.content);
       if (content === lastServerContent.current) return;
       lastServerContent.current = content;
@@ -224,7 +220,7 @@ export function DockApp() {
       }
     });
     return off;
-  }, [editor, note?.id]);
+  }, [editor]);
 
   // apply note content on load
   useEffect(() => {
@@ -260,20 +256,46 @@ export function DockApp() {
   }, [editor, note?.id, settings.autoInsertScreenshots]);
 
   // ---------- actions ----------
+  // The ONLY note-loading path. Race-protected: bumping `loadSeq` invalidates
+  // any in-flight request, so rapidly clicking several notes always ends on
+  // the last one clicked — never an out-of-order response.
   const loadNote = useCallback(
     async (id: string) => {
+      const seq = ++loadSeq.current;
       const n = await window.dockly.notes.get(id);
-      if (!n) return;
+      if (seq !== loadSeq.current || !n) return;
+      loadedNoteId.current = n.id;
+      activeNoteId.current = n.id;
+      // NOTE: do NOT pre-set lastServerContent here — the "apply note content
+      // on load" effect compares it against the fresh note to decide whether
+      // the editor needs its content swapped.
       setNote(n);
       setTitle(n.title);
-      lastServerContent.current = n.content;
       setSearchQ('');
       setSearching(false);
+      setSubjectMenu(false);
       void refreshRecents();
-      setTimeout(() => editor?.commands.focus('end'), 60);
+      setTimeout(() => {
+        if (seq === loadSeq.current) editorRef.current?.commands.focus('end');
+      }, 60);
     },
-    [editor, refreshRecents],
+    [refreshRecents],
   );
+
+  // ---------- load the active note ----------
+  // Single guarded load path: `cfg.noteId` changes (from dock:state broadcasts)
+  // and `sync:active-note` events (from the main window) both route through
+  // `loadNote`, which is race-protected so the last requested note wins.
+  useEffect(() => {
+    if (cfg.noteId === loadedNoteId.current) return;
+    if (!cfg.noteId) {
+      loadedNoteId.current = null;
+      activeNoteId.current = null;
+      setNote(null);
+      return;
+    }
+    void loadNote(cfg.noteId);
+  }, [cfg.noteId, loadNote]);
 
   const newNote = () => {
     const target = effectiveSubjectId;
