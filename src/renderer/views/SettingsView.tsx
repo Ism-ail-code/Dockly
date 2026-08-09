@@ -188,6 +188,11 @@ function buildCategories(onReset: () => void): Category[] {
         desc: 'Restore your custom dock width after restarting',
         keywords: 'dock width size remember persist resize',
       },
+        key: 'dockRememberHeight',
+        title: 'Remember dock height',
+        desc: 'Restore the dock height after restarting',
+        keywords: 'dock height size remember persist resize vertical',
+      },
       {
         kind: 'toggle',
         key: 'dockTransparencyEnabled',
