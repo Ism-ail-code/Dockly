@@ -43,8 +43,12 @@ export const state = {
   setActiveNote(noteId: string | null, subjectId: string | null, source: 'main' | 'dock'): void {
     this.activeNoteId = noteId;
     this.activeNoteSubjectId = subjectId;
-    sendTo(windows.main, 'sync:active-note', { noteId, source, from: 'dock' as const });
-    sendTo(windows.dock, 'sync:active-note', { noteId, source, from: 'main' as const });
+    // Label every message with the TRUE origin so each window can ignore echoes
+    // of its own actions. Previously the echo sent to the dock was mislabeled
+    // 'main', so the dock treated its own `notes:get` as an external change and
+    // re-fetched → infinite update loop / rapid note switching.
+    sendTo(windows.main, 'sync:active-note', { noteId, source, from: source });
+    sendTo(windows.dock, 'sync:active-note', { noteId, source, from: source });
   },
 
   broadcastContent(noteId: string, content: string, updatedAt: number, from: 'main' | 'dock'): void {
