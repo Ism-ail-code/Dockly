@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  ArchiveRestore,
   ArrowRight,
   Camera,
   Clock,
@@ -212,6 +213,10 @@ export function Dashboard() {
           <button className="btn" onClick={newNote} data-tooltip="New note (Ctrl+N)">
             <Plus size={14} />
             New note
+          </button>
+          <button className="btn" onClick={() => useApp.getState().setView('archive')} data-tooltip="View archived notes">
+            <ArchiveRestore size={14} />
+            Archive
           </button>
         </div>
       )}

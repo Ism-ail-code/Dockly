@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Archive,
-  ArrowLeft,
   Clock,
   Copy,
   Image as ImageIcon,
@@ -13,7 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { useApp } from '@/app/store';
-import { Dropdown, EmptyState, SubjectIcon, timeAgo, useToast } from '@/components/ui';
+import { BackButton, ConfirmDialog, Dropdown, EmptyState, SubjectIcon, timeAgo, useToast } from '@/components/ui';
 import type { Note } from '@shared/types';
 
 export function SubjectView() {
@@ -59,9 +58,7 @@ export function SubjectView() {
   return (
     <div className="subject-view view-enter">
       <div className="sub-head">
-        <button className="btn btn-icon btn-ghost" onClick={goBack} data-tooltip="Back">
-          <ArrowLeft />
-        </button>
+        <BackButton label="Return to dashboard" onClick={goBack} />
         <div className="sub-title-icon">
           <SubjectIcon name={subject.icon} size={20} />
         </div>
@@ -153,6 +150,7 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
   const refreshSubjects = useApp((s) => s.refreshSubjects);
   const toast = useToast();
   const [menu, setMenu] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const actions = {
     favorite: async () => {
@@ -170,7 +168,9 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
       toast.success('Note archived');
     },
     remove: async () => {
+      setConfirmDelete(false);
       await window.dockly.notes.delete(note.id);
+      useApp.getState().deleteNoteLocal(note.id);
       await Promise.all([refreshNotes(), refreshFavorites(), refreshRecents(), refreshSubjects()]);
       toast.success('Note deleted');
     },
@@ -207,7 +207,7 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
                 { label: 'Duplicate', icon: Copy, kbd: 'Ctrl+D', onClick: actions.duplicate },
                 { label: 'Archive', icon: Archive, kbd: 'Ctrl+Shift+A', onClick: actions.archive },
                 { sep: true },
-                { label: 'Delete', icon: Trash2, danger: true, onClick: actions.remove },
+                { label: 'Delete', icon: Trash2, danger: true, onClick: () => setConfirmDelete(true) },
               ]}
             />
           )}
@@ -232,6 +232,20 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
           {timeAgo(note.updatedAt)}
         </span>
       </div>
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete this note?"
+          body={
+            <p className="t-sub">
+              <b>“{note.title || 'Untitled note'}”</b> and any screenshots inside it will be permanently deleted. This cannot be undone.
+            </p>
+          }
+          confirmLabel="Delete"
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void actions.remove()}
+        />
+      )}
     </div>
   );
 }

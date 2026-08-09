@@ -17,7 +17,6 @@ import Placeholder from '@tiptap/extension-placeholder';
 import {
   Archive,
   ArrowDownToLine,
-  ArrowLeft,
   Bold,
   Check,
   CheckSquare,
@@ -49,8 +48,11 @@ import {
   X,
 } from 'lucide-react';
 import { useApp } from '@/app/store';
-import { Dropdown, SubjectIcon, timeAgo, useToast } from '@/components/ui';
+import { BackButton, ConfirmDialog, Dropdown, SubjectIcon, timeAgo, useToast } from '@/components/ui';
 import type { Note } from '@shared/types';
+
+// Scroll positions per note, so returning to a note restores where you left off.
+const scrollPositions = new Map<string, number>();
 
 const HIGHLIGHT_COLORS = [
   { label: 'None', hex: null },
@@ -76,6 +78,7 @@ const TEXT_COLORS = [
 export function EditorView() {
   const noteId = useApp((s) => s.currentNoteId);
   const subjects = useApp((s) => s.subjects);
+  const navFrom = useApp((s) => s.navFrom);
   const goBack = useApp((s) => s.goBack);
   const refreshNotes = useApp((s) => s.refreshNotes);
   const refreshSubjects = useApp((s) => s.refreshSubjects);
@@ -98,6 +101,7 @@ export function EditorView() {
   const [dirty, setDirty] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [timerSec, setTimerSec] = useState(0);
   const [progress, setProgress] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -108,12 +112,16 @@ export function EditorView() {
   const subject = subjects.find((s) => s.id === note?.subjectId);
 
   const load = useCallback(async (id: string) => {
-    const n = await window.dockly.notes.get(id);
-    if (!n) return;
+    const n = await window.dockly.notes.get(id).catch(() => null);
+    if (!n) {
+      // The note no longer exists — never leave the user on a stuck screen.
+      goBack();
+      return;
+    }
     setNote(n);
     setTitle(n.title);
     setTags(n.tags);
-  }, []);
+  }, [goBack]);
 
   useEffect(() => {
     if (!noteId) return;
@@ -265,6 +273,26 @@ export function EditorView() {
     }
   }, [editor, noteId]);
 
+  // Navigating away must never lose work: flush any pending edits on unmount
+  // (also covers navigating with auto-save switched off).
+  useEffect(() => {
+    return () => {
+      if (editor && noteId) {
+        void window.dockly.notes.contentSave(noteId, editor.getJSON() as unknown as string);
+      }
+    };
+  }, [editor, noteId]);
+
+  // Remember where the user was in the note; restore it on return.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const id = noteId;
+    return () => {
+      if (id) scrollPositions.set(id, el.scrollTop);
+    };
+  }, [noteId]);
+
   // apply note content after load
   useEffect(() => {
     if (!editor || !note) return;
@@ -272,6 +300,11 @@ export function EditorView() {
       lastServerContent.current = note.content;
       editor.commands.setContent(JSON.parse(note.content), false);
     }
+    const el = scrollRef.current;
+    const saved = el && note ? scrollPositions.get(note.id) : null;
+    if (el && saved) requestAnimationFrame(() => {
+      el.scrollTop = saved;
+    });
   }, [editor, note]);
 
   const commitTitle = (t: string) => {
@@ -320,7 +353,10 @@ export function EditorView() {
 
   const remove = async () => {
     if (!noteId) return;
-    await window.dockly.notes.delete(noteId);
+    setConfirmDelete(false);
+    const id = noteId;
+    await window.dockly.notes.delete(id);
+    useApp.getState().deleteNoteLocal(id);
     toast.success('Note deleted');
     goBack();
     await Promise.all([refreshNotes(), refreshFavorites(), refreshRecents(), refreshSubjects()]);
@@ -362,9 +398,7 @@ export function EditorView() {
       )}
       {/* header */}
       <div className="editor-head">
-        <button className="btn btn-icon btn-ghost" onClick={goBack} data-tooltip="Back">
-          <ArrowLeft />
-        </button>
+        <BackButton label={navFrom === 'subject' ? 'Return to subject' : 'Return to notes'} onClick={goBack} />
         {subject && (
           <button className="editor-subject" onClick={() => useApp.getState().openSubject(subject.id)} data-tooltip={subject ? `Go to ${subject.name}` : 'Open subject'}>
             <SubjectIcon name={subject.icon} size={13} />
@@ -417,7 +451,7 @@ export function EditorView() {
                   { label: 'Move to subject…', icon: Rows3, onClick: () => setMoveOpen(true) },
                   { label: 'Archive', icon: Archive, kbd: 'Ctrl+Shift+A', onClick: archive },
                   { sep: true },
-                  { label: 'Delete note', icon: Trash2, danger: true, onClick: remove },
+                  { label: 'Delete note', icon: Trash2, danger: true, onClick: () => setConfirmDelete(true) },
                 ]}
               />
             )}
@@ -587,6 +621,21 @@ export function EditorView() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* delete confirmation — permanent, irreversible data loss */}
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete this note?"
+          body={
+            <p className="t-sub">
+              <b>“{note.title || 'Untitled note'}”</b> and any screenshots inside it will be permanently deleted. This cannot be undone.
+            </p>
+          }
+          confirmLabel="Delete"
+          onCancel={() => setConfirmDelete(false)}
+          onConfirm={() => void remove()}
+        />
       )}
     </div>
   );

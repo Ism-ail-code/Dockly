@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { ArchiveRestore, ArrowLeft, Image as ImageIcon, Trash2 } from 'lucide-react';
+import { ArchiveRestore, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { useApp } from '@/app/store';
-import { EmptyState, timeAgo, useToast } from '@/components/ui';
+import { BackButton, ConfirmDialog, EmptyState, timeAgo, useToast } from '@/components/ui';
 import type { Note } from '@shared/types';
 
 export function ArchiveView() {
   const goBack = useApp((s) => s.goBack);
   const [notes, setNotes] = useState<Note[] | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Note | null>(null);
   const toast = useToast();
 
   const load = async () => {
@@ -22,7 +23,9 @@ export function ArchiveView() {
     await load();
   };
   const remove = async (id: string) => {
+    setConfirmDelete(null);
     await window.dockly.notes.delete(id);
+    useApp.getState().deleteNoteLocal(id);
     toast.success('Note deleted forever');
     await load();
   };
@@ -30,9 +33,7 @@ export function ArchiveView() {
   return (
     <div className="subject-view view-enter">
       <div className="sub-head">
-        <button className="btn btn-icon btn-ghost" onClick={goBack} data-tooltip="Back">
-          <ArrowLeft />
-        </button>
+        <BackButton label="Return to dashboard" onClick={goBack} />
         <div className="sub-title t-display">Archive</div>
         <div className="t-sub" style={{ marginLeft: 12 }}>
           {notes ? `${notes.filter((n) => n.isArchived).length} archived` : ''}
@@ -65,12 +66,26 @@ export function ArchiveView() {
                 <ArchiveRestore size={14} />
                 Restore
               </button>
-              <button className="btn btn-ghost btn-icon" onClick={() => void remove(n.id)} data-tooltip="Delete forever">
+              <button className="btn btn-ghost btn-icon" onClick={() => setConfirmDelete(n)} data-tooltip="Delete forever">
                 <Trash2 size={14} />
               </button>
             </div>
           ))}
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title="Delete forever?"
+          body={
+            <p className="t-sub">
+              <b>“{confirmDelete.title || 'Untitled note'}”</b> and any screenshots inside it will be permanently deleted. This cannot be undone.
+            </p>
+          }
+          confirmLabel="Delete forever"
+          onCancel={() => setConfirmDelete(null)}
+          onConfirm={() => void remove(confirmDelete.id)}
+        />
       )}
     </div>
   );

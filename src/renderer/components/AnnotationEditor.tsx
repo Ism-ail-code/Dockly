@@ -15,12 +15,11 @@ import {
   Square,
   Type,
   Undo2,
-  X,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react';
 import { useApp } from '@/app/store';
-import { useToast } from '@/components/ui';
+import { BackButton, useToast } from '@/components/ui';
 
 type Tool = 'pen' | 'pencil' | 'highlighter' | 'arrow' | 'rect' | 'ellipse' | 'line' | 'text' | 'blur' | 'crop' | 'pan';
 
@@ -100,6 +99,16 @@ export function AnnotationEditor() {
 
   const pointerDown = useRef<Point | null>(null);
   const lastPoint = useRef<Point | null>(null);
+
+  // Esc closes the annotation editor without saving (matches the Back button).
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
 
   // load image
   useEffect(() => {
@@ -393,14 +402,12 @@ export function AnnotationEditor() {
     return (
       <div className="modal-backdrop">
         <div className="skeleton" style={{ position: 'relative', width: 420, height: 300, borderRadius: 20 }}>
-          <button
-            className="btn btn-icon btn-ghost"
-            style={{ position: 'absolute', top: 10, right: 10 }}
+          <BackButton
+            label="Return to note"
             onClick={() => setOpen(false)}
-            aria-label="Cancel"
-          >
-            <X size={16} />
-          </button>
+            tipSide="left"
+            style={{ position: 'absolute', top: 10, right: 10 }}
+          />
         </div>
       </div>
     );
@@ -453,9 +460,7 @@ export function AnnotationEditor() {
             <Save size={14} />
             {saving ? 'Saving…' : 'Save to note'}
           </button>
-          <button className="btn btn-icon btn-ghost" onClick={() => setOpen(false)} data-tooltip="Cancel">
-            <X size={16} />
-          </button>
+          <BackButton label="Return to note" onClick={() => setOpen(false)} tipSide="left" />
         </div>
       </div>
 
