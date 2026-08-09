@@ -157,13 +157,24 @@ function dockXForWidth(width: number): number {
 }
 
 export function createDockWindow(): BrowserWindow {
-  // Persisted preferences decide position/width/transparency/focus before first paint.
+  // Persisted preferences decide position/width/height/transparency/focus before first paint.
   const s = state.settings;
+  const area = workArea();
   if (s?.dockRememberPosition && s.dockSide === 'left') state.setDockConfig({ side: 'left' });
   const rememberedWidth = s?.dockRememberWidth
     ? Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, Math.round(s.dockWidth ?? DOCK_DEFAULT_WIDTH)))
     : DOCK_DEFAULT_WIDTH;
-  state.setDockConfig({ width: rememberedWidth, focusMode: s?.focusMode ?? false });
+  const rememberedHeight =
+    s?.dockRememberHeight && (s.dockHeight ?? 0) > 0
+      ? clampDockHeight(s.dockHeight)
+      : area.height;
+  state.setDockConfig({
+    width: rememberedWidth,
+    height: rememberedHeight,
+    y: area.y,
+    topEdgeFree: false,
+    focusMode: s?.focusMode ?? false,
+  });
 
   // Persisted preference decides whether the dock starts pinned (default: always on top).
   const onTop = s?.dockOnTop ?? true;
