@@ -174,12 +174,17 @@ export function DockApp() {
         attributes: { class: 'doc doc-dock', spellcheck: settings.spellCheck ? 'true' : 'false' },
       },
       onUpdate: ({ editor }) => {
-        if (!settings.autoSave) return;
+        if (!settingsRef.current.autoSave) return;
+        // Snapshot note id + content NOW — the debounce may fire after the
+        // user has switched notes, and saving `editor.getJSON()` then would
+        // persist the new note's document under the old note's id.
+        const id = activeNoteId.current;
+        if (!id) return;
+        const snapshot = editor.getJSON();
         setSaveState('saving');
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
-          if (!note?.id) return;
-          void window.dockly.notes.contentSave(note.id, editor.getJSON() as unknown as string);
+          void window.dockly.notes.contentSave(id, snapshot as unknown as string);
           setSaveState('saved');
           setTimeout(() => setSaveState('idle'), 1600);
           if (recentsTimer.current) clearTimeout(recentsTimer.current);
@@ -197,12 +202,13 @@ export function DockApp() {
   // With auto-save off, protect dock edits by saving when the window loses focus.
   useEffect(() => {
     const onBlur = () => {
-      if (!note?.id || !editor) return;
-      void window.dockly.notes.contentSave(note.id, editor.getJSON() as unknown as string);
+      const id = activeNoteId.current;
+      if (!id || !editor) return;
+      void window.dockly.notes.contentSave(id, editor.getJSON() as unknown as string);
     };
     window.addEventListener('blur', onBlur);
     return () => window.removeEventListener('blur', onBlur);
-  }, [editor, note?.id]);
+  }, [editor]);
 
   // apply remote content (from main window)
   useEffect(() => {
@@ -239,21 +245,22 @@ export function DockApp() {
   useEffect(() => {
     const off = window.dockly.on('clipboard:image', (p) => {
       const payload = p as { png: string; width: number; height: number; capturedAt: number };
-      if (!note?.id) return;
-      if (!settings.autoInsertScreenshots) return;
+      const id = activeNoteId.current;
+      if (!id) return;
+      if (!settingsRef.current.autoInsertScreenshots) return;
       void (async () => {
         try {
-          const { fileName } = await window.dockly.screenshots.save(note.id, payload.png);
+          const { fileName } = await window.dockly.screenshots.save(id, payload.png);
           const src = 'dockly-shot://f/' + fileName;
-          const pos = editor?.state.doc.content.size ?? 0;
-          editor?.chain().focus().insertContentAt(pos, { type: 'image', attrs: { src } }).run();
+          const pos = editorRef.current?.state.doc.content.size ?? 0;
+          editorRef.current?.chain().focus().insertContentAt(pos, { type: 'image', attrs: { src } }).run();
         } catch {
           /* ignore */
         }
       })();
     });
     return off;
-  }, [editor, note?.id, settings.autoInsertScreenshots]);
+  }, [editor]);
 
   // ---------- actions ----------
   // The ONLY note-loading path. Race-protected: bumping `loadSeq` invalidates
