@@ -384,6 +384,14 @@ export function DockApp() {
       };
       window.addEventListener('pointermove', onMove);
       window.addEventListener('pointerup', onUp);
+      // Guarded: synthetic events (and some automated environments) have no
+      // active pointer, which makes setPointerCapture throw. The drag must
+      // still work — the window listeners are already attached above.
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* no active pointer — fine */
+      }
     },
     [cfg.collapsed, cfg.locked, cfg.width, cfg.height, cfg.side],
   );
