@@ -190,6 +190,20 @@ export function registerIpc(): void {
     }
     return state.dock;
   });
+  // Two-dimensional resize: renderer reports the raw drag target plus which
+  // vertical edge is fixed ('top' = bottom edge dragged, 'bottom' = top edge dragged).
+  handle('dock:set-size', (_e, width: number, height: number, fixed: 'top' | 'bottom' = 'top') => {
+    resizeDockTo(width, height, fixed);
+    if (state.settings?.dockRememberWidth) {
+      const settings = db.setSetting('dockWidth', state.dock.width);
+      state.setSettings(settings);
+    }
+    if (state.settings?.dockRememberHeight) {
+      const settings = db.setSetting('dockHeight', state.dock.height);
+      state.setSettings(settings);
+    }
+    return state.dock;
+  });
   handle('dock:toggle-collapse', () => {
     toggleDockCollapse();
     return state.dock;

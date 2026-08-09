@@ -91,6 +91,8 @@ const api = {
     close: () => invoke<DockConfig>('dock:close'),
     setSide: (side: 'left' | 'right') => invoke<DockConfig>('dock:set-side', side),
     setWidth: (width: number) => invoke<DockConfig>('dock:set-width', width),
+    setSize: (width: number, height: number, fixed: 'top' | 'bottom' = 'top') =>
+      invoke<DockConfig>('dock:set-size', width, height, fixed),
     toggleCollapse: () => invoke<DockConfig>('dock:toggle-collapse'),
     setLocked: (locked: boolean) => invoke<DockConfig>('dock:set-locked', locked),
     setOnTop: (on: boolean) => invoke<DockConfig>('dock:set-on-top', on),
