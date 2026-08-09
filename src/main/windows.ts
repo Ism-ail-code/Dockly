@@ -221,6 +221,20 @@ export function createDockWindow(): BrowserWindow {
 export function getDockWindow(): BrowserWindow | null {
   return dockWin;
 }
+  // Keep the dock's vertical placement in sync when the user drags the window
+  // by its header: the top resize handle becomes available once the top edge
+  // is no longer flush with the work area.
+  let moveTimer: NodeJS.Timeout | null = null;
+  win.on('move', () => {
+    if (moveTimer) return;
+    moveTimer = setTimeout(() => {
+      moveTimer = null;
+      if (win.isDestroyed()) return;
+      const b = win.getBounds();
+      const a = workArea();
+      state.setDockConfig({ y: b.y, height: b.height, topEdgeFree: b.y > a.y + 2 });
+    }, 60);
+  });
 
 let tweenTimer: NodeJS.Timeout | null = null;
 
@@ -234,10 +248,10 @@ export function tweenDockWidth(to: number, duration = 220): void {
   tweenTimer = setInterval(() => {
     const t = Math.min(1, (Date.now() - start) / duration);
     const width = Math.round(from.width + (to - from.width) * ease(t));
-    const side = state.dock.side;
+    // Preserve the current vertical size/position while animating the width.
     const area = workArea();
-    const x = side === 'left' ? area.x : area.x + area.width - width;
-    win.setBounds({ x, y: area.y, width, height: area.height }, false);
+    const x = state.dock.side === 'left' ? area.x : area.x + area.width - width;
+    win.setBounds({ x, y: from.y, width, height: from.height }, false);
     if (t >= 1 && tweenTimer) {
       clearInterval(tweenTimer);
       tweenTimer = null;
@@ -258,6 +272,8 @@ export function applyDockBounds(): void {
  * @param width  desired width (clamped)
  * @param height desired height (clamped)
  * @param fixed  which vertical edge stays put while resizing:
+  const area = workArea();
+  state.setDockConfig({ y: b.y, height: b.height, topEdgeFree: b.y > area.y + 2 });
  *               'top'    → the top edge is fixed, height grows/shrinks downward
  *               'bottom' → the bottom edge is fixed, the top edge moves
  */
