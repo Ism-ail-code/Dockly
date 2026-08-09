@@ -843,7 +843,21 @@ body {
 .dock-drag-region.right {
   right: 0;
 }
-
+/* ---------- compact layouts: adapt chrome to small dock sizes ---------- */
+.dock.narrow .dock-subject-row,
+.dock.narrow .dock-recent-preview {
+  display: none;
+}
+.dock.short .dock-search,
+.dock.short .dock-subject-row {
+  display: none;
+}
+.dock.mini .dock-foot {
+  display: none;
+}
+.dock.mini .dock-note {
+  min-height: 88px;
+}
 /* ============================================================
    Dock editor document
    ============================================================ */

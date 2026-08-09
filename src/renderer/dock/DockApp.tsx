@@ -394,10 +394,12 @@ export function DockApp() {
   if (cfg.collapsed) {
     return (
       <div className={`dock dock-collapsed side-${cfg.side}`}>
-        <button className="dock-rail-logo" onClick={toggleCollapse} data-tooltip="Expand dock">
+        {/* No drag region while collapsed: the 40px drag strip used to sit on
+            top of this button and swallowed its clicks (-webkit-app-region:
+            drag hit-testing), making the dock impossible to expand again. */}
+        <button className="dock-rail-logo" onClick={toggleCollapse} data-tooltip="Expand dock" aria-label="Expand dock">
           <DocklyLogo size={22} />
         </button>
-        {!cfg.locked && <div className={`dock-drag-region ${innerEdge ? 'right' : 'left'}`} style={{ WebkitAppRegion: 'drag' } as CSSProperties} />}
       </div>
     );
   }
