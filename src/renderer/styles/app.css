@@ -906,6 +906,43 @@
   min-width: 34px;
   text-align: right;
 }
+.dock-transparency {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+.dock-transparency-presets {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.dock-transparency-preset {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: var(--t-12);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), transform var(--dur-1);
+}
+.dock-transparency-preset:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+}
+.dock-transparency-preset:active {
+  transform: scale(0.96);
+}
+.dock-transparency-preset.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
 .btn-danger-ghost {
   color: var(--danger);
   border: 1px solid color-mix(in srgb, var(--danger) 40%, transparent);
