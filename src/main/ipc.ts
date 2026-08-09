@@ -215,12 +215,10 @@ export function registerIpc(): void {
     return state.dock;
   });
   handle('dock:set-opacity', (_e, opacity: number) => {
-    const clamped = Math.max(0.4, Math.min(1, opacity));
-    const win = getDockWindow();
-    if (win && !win.isDestroyed()) win.setOpacity(clamped);
-    state.setDockConfig({ opacity: clamped });
+    const clamped = Math.max(0.2, Math.min(1, opacity));
     const settings = db.setSetting('dockTransparency', clamped);
     state.setSettings(settings);
+    applySettingsSideEffects('dockTransparency', settings);
     return state.dock;
   });
   handle('dock:toggle-focus', () => {
