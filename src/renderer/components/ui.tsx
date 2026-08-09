@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
+  ArrowLeft,
   Atom,
   BookOpen,
   Check,
@@ -28,6 +29,73 @@ export const SUBJECT_ICONS: Record<string, LucideIcon> = {
 export function SubjectIcon({ name, size = 18 }: { name: string; size?: number }) {
   const C = SUBJECT_ICONS[name] ?? Layers;
   return <C size={size} />;
+}
+
+/* ---------------- Back button ---------------- */
+
+// Single, consistent navigation control for every secondary screen.
+// Renders "← Back" (arrow icon) with a descriptive tooltip + aria-label.
+export function BackButton({
+  label,
+  onClick,
+  tipSide = 'bottom',
+  style,
+}: {
+  label: string;
+  onClick: () => void;
+  tipSide?: 'top' | 'bottom' | 'left' | 'right';
+  style?: React.CSSProperties;
+}) {
+  return (
+    <button className="btn btn-icon btn-ghost" onClick={onClick} data-tooltip={label} data-tooltip-side={tipSide} aria-label={label} style={style}>
+      <ArrowLeft />
+    </button>
+  );
+}
+
+/* ---------------- Confirm dialog ---------------- */
+
+// Reusable destructive-action confirmation. Only use where data can be lost.
+export function ConfirmDialog({
+  title,
+  body,
+  confirmLabel,
+  cancelLabel = 'Cancel',
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  body: ReactNode;
+  confirmLabel: string;
+  cancelLabel?: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onCancel]);
+  return (
+    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()} onClick={(e) => e.stopPropagation()}>
+      <div className="modal" style={{ width: 380 }} onMouseDown={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <div className="modal-title">{title}</div>
+        </div>
+        <div className="modal-body">{body}</div>
+        <div className="modal-foot">
+          <button className="btn" onClick={onCancel} data-tooltip={cancelLabel}>
+            {cancelLabel}
+          </button>
+          <button className="btn btn-danger" onClick={onConfirm} autoFocus>
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function Kbd({ children }: { children: ReactNode }) {

@@ -14,6 +14,16 @@ export function VersionPanel() {
     void window.dockly.versions.list(noteId).then(setVersions);
   }, [open, noteId]);
 
+  // Esc closes the version history panel.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, setOpen]);
+
   if (!open) return null;
 
   const fmt = (ts: number) =>

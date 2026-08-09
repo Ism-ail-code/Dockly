@@ -58,11 +58,14 @@ export function TooltipHost() {
   }, [showTooltips]);
 
   useEffect(() => {
-    const onOver = (e: PointerEvent) => {
+    // Listen to BOTH pointer and mouse events: inside -webkit-app-region drag
+    // regions (Electron titlebars) pointer events can be suppressed, so the
+    // mouse variants act as a reliable fallback for hover detection.
+    const onOver = (e: PointerEvent | MouseEvent) => {
       const el = (e.target as Element | null)?.closest?.('[data-tooltip]') as HTMLElement | null;
       if (el && el.dataset.tooltip) arm(el);
     };
-    const onOut = (e: PointerEvent) => {
+    const onOut = (e: PointerEvent | MouseEvent) => {
       const from = e.target as HTMLElement | null;
       const to = e.relatedTarget as Node | null;
       if (from && to instanceof HTMLElement && from.closest('[data-tooltip]')) {
@@ -90,6 +93,8 @@ export function TooltipHost() {
 
     window.addEventListener('pointerover', onOver, true);
     window.addEventListener('pointerout', onOut, true);
+    window.addEventListener('mouseover', onOver, true);
+    window.addEventListener('mouseout', onOut, true);
     window.addEventListener('focusin', onFocus, true);
     window.addEventListener('focusout', onBlur, true);
     window.addEventListener('scroll', onHide, true);
@@ -98,6 +103,8 @@ export function TooltipHost() {
     return () => {
       window.removeEventListener('pointerover', onOver, true);
       window.removeEventListener('pointerout', onOut, true);
+      window.removeEventListener('mouseover', onOver, true);
+      window.removeEventListener('mouseout', onOut, true);
       window.removeEventListener('focusin', onFocus, true);
       window.removeEventListener('focusout', onBlur, true);
       window.removeEventListener('scroll', onHide, true);
