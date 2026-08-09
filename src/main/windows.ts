@@ -200,8 +200,16 @@ export function createDockWindow(): BrowserWindow {
   });
   if (onTop) win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  const opacity = s?.dockTransparencyEnabled ? Math.max(0.4, Math.min(1, s.dockTransparency ?? 1)) : 1;
-  win.setOpacity(opacity);
+  // Transparency is applied in CSS (the panel background) so controls keep
+  // full contrast; the OS acrylic material supplies the blur behind the dock.
+  if (process.platform === 'win32') {
+    try {
+      win.setBackgroundMaterial(s?.dockTransparencyEnabled ? 'acrylic' : 'none');
+    } catch {
+      /* Windows 10 / unsupported — CSS translucency alone still applies */
+    }
+  }
+  const opacity = s?.dockTransparencyEnabled ? Math.max(0.2, Math.min(1, s.dockTransparency ?? 1)) : 1;
   state.setDockConfig({ onTop, opacity });
   win.loadURL(dockWindowUrl());
   win.webContents.on('console-message', (_e, level, message) => {
@@ -213,14 +221,6 @@ export function createDockWindow(): BrowserWindow {
     dockWin = null;
     state.setDockConfig({ open: false });
   });
-  dockWin = win;
-  hub.setDock(win);
-  return win;
-}
-
-export function getDockWindow(): BrowserWindow | null {
-  return dockWin;
-}
   // Keep the dock's vertical placement in sync when the user drags the window
   // by its header: the top resize handle becomes available once the top edge
   // is no longer flush with the work area.
@@ -235,6 +235,14 @@ export function getDockWindow(): BrowserWindow | null {
       state.setDockConfig({ y: b.y, height: b.height, topEdgeFree: b.y > a.y + 2 });
     }, 60);
   });
+  dockWin = win;
+  hub.setDock(win);
+  return win;
+}
+
+export function getDockWindow(): BrowserWindow | null {
+  return dockWin;
+}
 
 let tweenTimer: NodeJS.Timeout | null = null;
 
@@ -264,6 +272,8 @@ export function applyDockBounds(): void {
   if (!win || win.isDestroyed()) return;
   const b = dockTargetBounds();
   win.setBounds(b, false);
+  const area = workArea();
+  state.setDockConfig({ y: b.y, height: b.height, topEdgeFree: b.y > area.y + 2 });
 }
 
 /**
@@ -331,12 +341,23 @@ export function setDockOnTop(on: boolean): void {
   state.setDockConfig({ onTop: !!on });
 }
 
-/** Applies the persisted transparency preference to the dock window live. */
+/** Applies the persisted transparency preference to the dock window live.
+ *  Never fades the whole window — that would make text and controls
+ *  unreadable. Instead the panel background goes translucent in CSS while
+ *  controls keep their own solid surfaces; acrylic adds OS-level blur. */
 export function setDockTransparency(enabled: boolean, value: number): void {
-  const opacity = enabled ? Math.max(0.4, Math.min(1, value)) : 1;
   const win = dockWin;
-  if (win && !win.isDestroyed()) win.setOpacity(opacity);
-  state.setDockConfig({ opacity });
+  if (win && !win.isDestroyed()) {
+    win.setOpacity(1);
+    if (process.platform === 'win32') {
+      try {
+        win.setBackgroundMaterial(enabled ? 'acrylic' : 'none');
+      } catch {
+        /* Windows 10 / unsupported — CSS translucency alone still applies */
+      }
+    }
+  }
+  state.setDockConfig({ opacity: enabled ? Math.max(0.2, Math.min(1, value)) : 1 });
 }
 
 export function applySpellChecker(enabled: boolean): void {
