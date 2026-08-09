@@ -252,14 +252,47 @@ export function applyDockBounds(): void {
   win.setBounds(b, false);
 }
 
-export function resizeDockTo(width: number): void {
+/**
+ * Two-dimensional dock resize.
+ *
+ * @param width  desired width (clamped)
+ * @param height desired height (clamped)
+ * @param fixed  which vertical edge stays put while resizing:
+ *               'top'    → the top edge is fixed, height grows/shrinks downward
+ *               'bottom' → the bottom edge is fixed, the top edge moves
+ */
+export function resizeDockTo(width: number, height?: number, fixed: 'top' | 'bottom' = 'top'): void {
   const win = dockWin;
   if (!win || win.isDestroyed()) return;
-  const clamped = Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, Math.round(width)));
-  state.setDockConfig({ width: clamped });
   const area = workArea();
-  const x = state.dock.side === 'left' ? area.x : area.x + area.width - clamped;
-  win.setBounds({ x, y: area.y, width: clamped, height: area.height }, false);
+  const clampedW = clampDockWidth(width);
+
+  // The window's live bounds are the source of truth for the vertical anchor
+  // (the user may have moved the dock since the last resize).
+  const b = win.getBounds();
+  const bottom = b.y + b.height;
+  let y: number;
+  let h: number;
+  if (height === undefined) {
+    y = b.y;
+    h = b.height;
+  } else if (fixed === 'bottom') {
+    // Bottom edge stays; the top edge follows the drag (never above the work area).
+    y = Math.max(area.y, bottom - clampDockHeight(height));
+    h = bottom - y;
+    h = clampDockHeight(h);
+    y = bottom - h;
+  } else {
+    // Top edge stays; the height never pushes the dock below the work area.
+    y = b.y;
+    h = clampDockHeight(height);
+    h = Math.min(h, area.y + area.height - y);
+    h = Math.max(DOCK_MIN_HEIGHT, h);
+  }
+
+  const x = dockXForWidth(clampedW);
+  state.setDockConfig({ width: clampedW, height: h, y, topEdgeFree: y > area.y + 2 });
+  win.setBounds({ x, y, width: clampedW, height: h }, false);
 }
 
 export function toggleDockCollapse(): void {
