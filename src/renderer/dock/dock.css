@@ -66,6 +66,9 @@ body {
   border: 1px solid var(--border-strong);
   box-shadow: var(--shadow-3);
   cursor: pointer;
+  position: relative;
+  z-index: 2;
+  -webkit-app-region: no-drag;
   transition: transform var(--dur-2) var(--ease-spring), box-shadow var(--dur-2);
   animation: fadeIn 0.25s both;
 }
@@ -97,8 +100,15 @@ body {
   border-radius: 8px 16px 16px 8px;
 }
 .dock[data-translucent="on"] .dock-panel {
-  background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
-  backdrop-filter: blur(18px) saturate(1.25);
+  /* The panel itself goes translucent; every control inside keeps its own
+     surface so the UI stays readable. --dock-alpha comes from the settings
+     slider (0.2 = Transparent … 1 = Solid). The OS acrylic material (main
+     process) supplies the blur behind the window. */
+  background: color-mix(in srgb, var(--surface-solid) calc(var(--dock-alpha, 0.85) * 100%), transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 90%, transparent);
+}
+.dock[data-translucent="on"] .dock-panel.focus {
+  background: color-mix(in srgb, var(--surface-solid) calc((var(--dock-alpha, 0.85) + 0.1) * 100%), transparent);
 }
 .dock-panel.focus {
   background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
@@ -147,11 +157,12 @@ body {
   background: transparent;
   color: var(--text-3);
   cursor: pointer;
-  transition: background var(--dur-1), color var(--dur-1);
+  transition: background var(--dur-1), color var(--dur-1), transform var(--dur-1), box-shadow var(--dur-1), border-color var(--dur-1);
 }
 .dock-btn:hover {
   background: var(--surface-3);
   color: var(--text-1);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 .dock-btn.on {
   color: var(--accent);
@@ -167,6 +178,10 @@ body {
 .dock-btn svg {
   width: 12px;
   height: 12px;
+  transition: transform var(--dur-1) var(--ease-out);
+}
+.dock-btn:hover svg {
+  transform: translateY(-0.5px) scale(1.08);
 }
 .dock-btn-new {
   width: auto;
@@ -181,6 +196,33 @@ body {
 .dock-btn-new:hover {
   background: var(--accent-hover);
   color: var(--accent-ink);
+}
+
+/* ---------- translucent mode: floating controls ----------
+   The background turns transparent, so each control grows its own subtle
+   frosted surface instead of disappearing into the glass. */
+.dock[data-translucent="on"] .dock-btn {
+  background: color-mix(in srgb, var(--surface-solid) 55%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border-strong) 60%, transparent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+.dock[data-translucent="on"] .dock-btn:hover {
+  background: color-mix(in srgb, var(--surface-solid) 80%, transparent);
+  border-color: var(--accent-ring);
+  color: var(--text-1);
+  box-shadow: 0 2px 10px var(--accent-glow);
+}
+.dock[data-translucent="on"] .dock-btn.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent);
+}
+.dock[data-translucent="on"] .dock-btn-new,
+.dock[data-translucent="on"] .dock-btn-new:hover {
+  background: var(--accent);
+  border: none;
+  color: var(--accent-ink);
+  box-shadow: 0 2px 12px var(--accent-glow);
 }
 
 /* ---------- search ---------- */
@@ -231,6 +273,15 @@ body {
 .dock-search-clear:hover {
   background: var(--surface-3);
   color: var(--text-1);
+}
+.dock[data-translucent="on"] .dock-search {
+  background: color-mix(in srgb, var(--surface-solid) 60%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 70%, transparent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+.dock[data-translucent="on"] .dock-search:focus-within {
+  border-color: var(--accent-ring);
+  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 .dock-search-pop {
   position: absolute;
@@ -327,6 +378,11 @@ body {
 }
 .dock-subject-chip:hover {
   background: var(--accent-soft-2);
+}
+.dock[data-translucent="on"] .dock-subject-chip {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-solid) 50%);
+  border: 1px solid var(--accent-ring);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
 }
 .dock-subject-dot {
   width: 7px;
@@ -439,14 +495,20 @@ body {
   display: flex;
   flex-direction: column;
   border-radius: 14px;
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  /* "Paper" surface: solid theme surface with a faint lift so the card reads
+     as its own layer above the panel (was previously an undefined var). */
+  background: color-mix(in srgb, var(--surface-solid) 88%, var(--text-1) 7%);
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 2px 10px rgba(0, 0, 0, 0.12);
   overflow: hidden;
   transition: border-color var(--dur-1), box-shadow var(--dur-1);
 }
 .dock-note:hover {
   border-color: var(--accent-ring);
+}
+.dock[data-translucent="on"] .dock-note {
+  background: color-mix(in srgb, var(--surface-solid) calc(var(--dock-alpha, 0.85) * 92%), transparent);
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 .dock-note-head {
   display: flex;
@@ -558,26 +620,58 @@ body {
   text-align: center;
 }
 .dock-recent {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
   padding: 6px 8px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
   color: var(--text-1);
   text-align: left;
   cursor: pointer;
+  transition: background var(--dur-1), border-color var(--dur-1), transform var(--dur-1), box-shadow var(--dur-1);
 }
 .dock-recent:hover {
   background: var(--surface-2);
+  transform: translateY(-1px);
+}
+.dock-recent:active {
+  transform: scale(0.99);
 }
 .dock-recent.active {
   background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.16);
+}
+.dock-recent.active::before {
+  /* small accent indicator on the selection */
+  content: "";
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--accent);
 }
 .dock-recent.active .dock-recent-title {
   color: var(--accent);
+}
+.dock[data-translucent="on"] .dock-recent {
+  background: color-mix(in srgb, var(--surface-solid) 45%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 50%, transparent);
+}
+.dock[data-translucent="on"] .dock-recent:hover {
+  background: color-mix(in srgb, var(--surface-solid) 70%, transparent);
+  border-color: var(--border-strong);
+}
+.dock[data-translucent="on"] .dock-recent.active {
+  background: color-mix(in srgb, var(--accent) 18%, var(--surface-solid) 55%);
+  border-color: var(--accent-ring);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
 }
 .dock-recent-main {
   flex: 1;
@@ -644,6 +738,28 @@ body {
   background: var(--accent-soft);
   border-color: var(--accent-ring);
   color: var(--accent);
+}
+.dock[data-translucent="on"] .dock-open-library {
+  background: color-mix(in srgb, var(--surface-solid) 45%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 60%, transparent);
+}
+.dock[data-translucent="on"] .dock-open-library:hover {
+  background: color-mix(in srgb, var(--accent) 16%, var(--surface-solid) 50%);
+}
+
+/* On a see-through background, dim helper text needs a touch more contrast. */
+.dock[data-translucent="on"] .dock-section-label,
+.dock[data-translucent="on"] .dock-recent-preview,
+.dock[data-translucent="on"] .dock-recent-time,
+.dock[data-translucent="on"] .dock-note-count,
+.dock[data-translucent="on"] .dock-save,
+.dock[data-translucent="on"] .dock-capture-hint,
+.dock[data-translucent="on"] .dock-hint,
+.dock[data-translucent="on"] .dock-note-cta-sub {
+  color: var(--text-2);
+}
+.dock[data-translucent="on"] .dock-recents-empty {
+  color: var(--text-2);
 }
 
 /* focus mode: card fills the panel */
@@ -745,6 +861,7 @@ body {
 .dock-resize.active::before {
   opacity: 1;
 }
+
 /* ---------- top / bottom edge handles (height resize) ---------- */
 .dock-resize-t,
 .dock-resize-b {
@@ -827,22 +944,6 @@ body {
   opacity: 1;
 }
 
-
-
-/* drag region when unlocked */
-.dock-drag-region {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 40px;
-  cursor: move;
-}
-.dock-drag-region.left {
-  left: 0;
-}
-.dock-drag-region.right {
-  right: 0;
-}
 /* ---------- compact layouts: adapt chrome to small dock sizes ---------- */
 .dock.narrow .dock-subject-row,
 .dock.narrow .dock-recent-preview {
@@ -858,6 +959,22 @@ body {
 .dock.mini .dock-note {
   min-height: 88px;
 }
+
+/* drag region when unlocked */
+.dock-drag-region {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  cursor: move;
+}
+.dock-drag-region.left {
+  left: 0;
+}
+.dock-drag-region.right {
+  right: 0;
+}
+
 /* ============================================================
    Dock editor document
    ============================================================ */
