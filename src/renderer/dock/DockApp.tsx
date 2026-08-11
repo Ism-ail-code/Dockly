@@ -36,6 +36,7 @@ import { DEFAULT_SETTINGS } from '@shared/defaults';
 import { useApp } from '@/app/store';
 import { DocklyLogo } from '@/components/TopBar';
 import { SubjectIcon, timeAgo } from '@/components/ui';
+import { textToHtml } from '@/lib/clipboardText';
 
 interface DockNote {
   note: Note;
@@ -70,9 +71,11 @@ export function DockApp() {
   const [subjectMenu, setSubjectMenu] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [dragActive, setDragActive] = useState(false);
+  const [capturedFlash, setCapturedFlash] = useState<string | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recentsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastServerContent = useRef('');
   // Monotonic token so the LAST requested note always wins (rapid-click safety).
   const loadSeq = useRef(0);
@@ -262,6 +265,50 @@ export function DockApp() {
     });
     return off;
   }, [editor]);
+
+  // Tell the main process when the user copies text INSIDE Dockly, so it can
+  // recognize and ignore self-copies (no feedback loops into the same note).
+  useEffect(() => {
+    const onCopy = () => void window.dockly.clipboard.markSelfCopy();
+    document.addEventListener('copy', onCopy);
+    return () => document.removeEventListener('copy', onCopy);
+  }, []);
+
+  // Auto Capture Copied Text: insert captured text (Ctrl + C in another app)
+  // into the active note. Inserts at the current cursor when the editor has
+  // focus, otherwise appends at the end. Saves immediately.
+  useEffect(() => {
+    const off = window.dockly.on('clipboard:text', (p) => {
+      const payload = p as { text: string; noteId: string | null; capturedAt: number };
+      const id = activeNoteId.current;
+      if (!id) return;
+      if (payload.noteId && payload.noteId !== id) return;
+      if (!settingsRef.current.autoCaptureText) return;
+
+      const html = textToHtml(payload.text);
+      if (!html) return;
+      const ed = editorRef.current;
+      if (!ed) return;
+
+      const focused = ed.isFocused;
+      const chain = ed.chain();
+      if (focused) {
+        chain.focus().insertContent(html, { parseOptions: { preserveWhitespace: 'full' } });
+      } else {
+        const pos = ed.state.doc.content.size;
+        chain.focus().insertContentAt(pos, html, { parseOptions: { preserveWhitespace: 'full' } });
+      }
+      chain.run();
+      void window.dockly.notes.contentSave(id, ed.getJSON() as unknown as string);
+      if (recentsTimer.current) clearTimeout(recentsTimer.current);
+      recentsTimer.current = setTimeout(() => void refreshRecents(), 1500);
+
+      setCapturedFlash('Text captured ✓');
+      if (flashTimer.current) clearTimeout(flashTimer.current);
+      flashTimer.current = setTimeout(() => setCapturedFlash(null), 2600);
+    });
+    return off;
+  }, [refreshRecents]);
 
   // ---------- actions ----------
   // The ONLY note-loading path. Race-protected: bumping `loadSeq` invalidates
@@ -453,6 +500,7 @@ export function DockApp() {
       style={{ '--dock-alpha': String(settings.dockTransparency) } as CSSProperties}
     >
       <div className="dock-panel">
+        {capturedFlash && <div className="dock-flash">{capturedFlash}</div>}
         {/* header */}
         <div className="dock-head" style={!cfg.locked ? ({ WebkitAppRegion: 'drag' } as CSSProperties) : undefined}>
           <div className="dock-head-left">

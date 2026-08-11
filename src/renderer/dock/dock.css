@@ -808,6 +808,33 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Transient "Text captured ✓" pill — subtle, auto-dismisses (DockApp timer). */
+.dock-flash {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ok);
+  background: var(--surface-solid);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: dockFlash 2.6s var(--ease-out) both;
+}
+@keyframes dockFlash {
+  0% { opacity: 0; transform: translate(-50%, -6px); }
+  12% { opacity: 1; transform: translate(-50%, 0); }
+  80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -4px); }
+}
 .dock-foot-actions {
   display: flex;
   align-items: center;
