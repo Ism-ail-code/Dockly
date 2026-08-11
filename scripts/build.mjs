@@ -8,12 +8,12 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(root);
 
 await esbuild.build({
-  entryPoints: ['src/main/index.ts', 'src/preload/index.ts'],
+  entryPoints: ['src/main/index.ts', 'src/main/clipboard-worker.ts', 'src/preload/index.ts'],
   bundle: true,
   platform: 'node',
   format: 'cjs',
   target: 'node20',
-  external: ['electron', 'sql.js'],
+  external: ['electron', 'sql.js', 'koffi'],
   outdir: 'dist',
   entryNames: '[dir]/[name]',
   logLevel: 'info',
