@@ -4,9 +4,18 @@ import { createMainWindow, showMainWindow, showDock, onDisplayMetricsChanged } f
 import { registerIpc, registerProtocol } from './ipc';
 import { registerGlobalHotkeys, unregisterGlobalHotkeys } from './hotkeys';
 import { startDockAutoHidePoll } from './autohide';
+import { initClipboardListener, stopClipboardListener } from './clipboard';
+import { runClipboardE2E } from './cliptest';
 import { state, hub } from './state';
 
 process.on('uncaughtException', (err) => console.log('[lifecycle] uncaughtException', err));
+
+// QA harness (scripts/cliptest.mjs) runs against a scratch user-data dir.
+// Must be set before the single-instance lock so the harness never collides
+// with a running Dockly (different lock, different DB, different windows).
+if (process.env.DOCKLY_CLIP_TEST === '1' && process.env.DOCKLY_CLIP_USER_DATA) {
+  app.setPath('userData', process.env.DOCKLY_CLIP_USER_DATA);
+}
 
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -32,6 +41,7 @@ if (!gotLock) {
     registerProtocol();
     registerIpc();
     registerGlobalHotkeys();
+    initClipboardListener();
 
     createMainWindow(state.settings.theme);
 
@@ -58,14 +68,31 @@ if (!gotLock) {
 
   app.on('before-quit', () => {
     unregisterGlobalHotkeys();
+    stopClipboardListener();
   });
 
   app.on('window-all-closed', () => {
+    // The QA harness controls its own termination (process.kill SIGKILL) —
+    // app.quit() here would re-enter the shutdown sequence mid-exit and hang.
+    if (process.env.DOCKLY_CLIP_TEST === '1') return;
     console.log('[lifecycle] all windows closed — quitting');
     app.quit();
   });
 
-  if (process.env.DOCKLY_SMOKE === '1') {
+  // Clipboard capture end-to-end test (scripts/cliptest.mjs). Two roles:
+  //  'setup'  — boot, capture simulated copies, verify inserts, save state
+  //  'verify' — relaunch, confirm the captured text survived the restart
+  if (process.env.DOCKLY_CLIP_TEST === '1') {
+    app.whenReady().then(async () => {
+      try {
+        const role = (process.env.DOCKLY_CLIP_ROLE as 'setup' | 'verify') ?? 'setup';
+        await runClipboardE2E(role);
+      } catch (e) {
+        console.log('CLIP_E2E_RESULT ' + JSON.stringify({ ok: false, error: String(e) }));
+        process.exit(1);
+      }
+    });
+  } else if (process.env.DOCKLY_SMOKE === '1') {
     app.whenReady().then(() => {
       setTimeout(async () => {
         const win = hub.main;
