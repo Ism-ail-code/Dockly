@@ -76,15 +76,23 @@ export function App() {
   // ---------- clipboard: captured text (Ctrl + C) ----------
   useEffect(() => {
     const off = window.dockly.on('clipboard:text', (p) => {
-      const payload = p as TextPayload;
+      const payload = p as TextPayload & { noteId?: string | null };
       const state = useApp.getState();
       if (!state.currentNoteId || !state.settings.autoCaptureText) return;
+      if (payload.noteId && payload.noteId !== state.currentNoteId) return;
       state.setPendingText({ text: payload.text, capturedAt: payload.capturedAt });
-      toast.success('Copied text captured — inserting into your note');
+      toast.success('Text captured ✓');
       playSound('tick');
     });
     return off;
   }, [toast]);
+
+  // Copies made inside Dockly must never be re-captured into a note.
+  useEffect(() => {
+    const onCopy = () => void window.dockly.clipboard.markSelfCopy();
+    document.addEventListener('copy', onCopy);
+    return () => document.removeEventListener('copy', onCopy);
+  }, []);
 
   // ---------- settings sync from main ----------
   useEffect(() => {

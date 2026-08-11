@@ -20,6 +20,7 @@ interface PendingShot {
 interface PendingText {
   text: string;
   capturedAt: number;
+  noteId?: string | null;
 }
 
 interface AppState {

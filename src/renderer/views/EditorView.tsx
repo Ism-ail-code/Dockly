@@ -50,6 +50,7 @@ import {
 import { useApp } from '@/app/store';
 import { BackButton, ConfirmDialog, Dropdown, SubjectIcon, timeAgo, useToast } from '@/components/ui';
 import type { Note } from '@shared/types';
+import { textToHtml } from '@/lib/clipboardText';
 
 // Scroll positions per note, so returning to a note restores where you left off.
 const scrollPositions = new Map<string, number>();
@@ -257,12 +258,18 @@ export function EditorView() {
   // insert captured text (Ctrl + C) when enabled
   useEffect(() => {
     if (!pendingText || !editor || !noteId) return;
-    const { text } = pendingText;
+    const { text, noteId: targetNoteId } = pendingText as { text: string; noteId?: string | null };
+    if (targetNoteId && targetNoteId !== noteId) return;
     setPendingText(null);
-    const node = { type: 'paragraph', content: [{ type: 'text', text }] };
-    const pos = editor.state.doc.content.size;
-    editor.chain().focus().insertContentAt(pos, node).run();
-    toast.success('Copied text inserted');
+    const html = textToHtml(text);
+    if (!html) return;
+    if (editor.isFocused) {
+      editor.chain().focus().insertContent(html, { parseOptions: { preserveWhitespace: 'full' } }).run();
+    } else {
+      const pos = editor.state.doc.content.size;
+      editor.chain().focus().insertContentAt(pos, html, { parseOptions: { preserveWhitespace: 'full' } }).run();
+    }
+    toast.success('Text captured ✓');
     void persistSoon();
     void refreshNotes();
   }, [pendingText, editor, noteId]); // eslint-disable-line react-hooks/exhaustive-deps
