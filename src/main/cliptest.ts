@@ -1,19 +1,19 @@
-/**
+﻿/**
  * Clipboard capture end-to-end harness (scripts/cliptest.mjs).
  *
  * Runs inside the real app (built, real windows, real renderer) against a
  * scratch user-data dir. Two roles:
  *
- *  'setup'  — boot, open a note in the dock, simulate real clipboard changes
+ *  'setup'  â€” boot, open a note in the dock, simulate real clipboard changes
  *             (Ctrl+C in "another app", copies inside Dockly, screenshot),
  *             assert the event-driven capture delivers to the right window
  *             and that the renderer actually inserts + saves the text.
- *  'verify' — relaunch, confirm the captured text survived the restart and
+ *  'verify' â€” relaunch, confirm the captured text survived the restart and
  *             the feature settings persisted.
  *
  * Each step is deterministic: windows are blurred/focused explicitly, every
  * clipboard write uses a unique payload so duplicate-suppression can never
- * mask a bug, and the whole run relies on the OS clipboard-change notifier —
+ * mask a bug, and the whole run relies on the OS clipboard-change notifier â€”
  * if the listener source is 'none', the harness fails loudly.
  */
 import { app, clipboard, BrowserWindow, nativeImage } from 'electron';
@@ -23,7 +23,7 @@ import { execFileSync } from 'node:child_process';
 import { state } from './state';
 import { getMainWindow, getDockWindow, showDock } from './windows';
 import { createSubject, createNote, getNote, setSetting, screenshotCount } from './db';
-import { setCaptureMode, clipboardDiagnostics } from './clipboard';
+import { setCaptureMode, markSelfCopy, clipboardDiagnostics } from './clipboard';
 
 const RED_1PX_PNG = Buffer.from(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4z8AAAAMBAQDJ/pLvAAAAAElFTkSuQmCC',
@@ -44,10 +44,7 @@ const S = {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-let halted = false;
-
 function result(ok: boolean, extra: Record<string, unknown>): never {
-  halted = true;
   console.log('CLIP_E2E_RESULT ' + JSON.stringify({ ok, ...extra }));
   // app.exit() skips before-quit/will-quit/window-all-closed, so it cannot
   // deadlock against the app's shutdown handlers. If even that returns (it
@@ -62,7 +59,7 @@ function result(ok: boolean, extra: Record<string, unknown>): never {
   } catch {
     /* already gone */
   }
-  // Unreachable in practice — satisfies the `never` return type.
+  // Unreachable in practice â€” satisfies the `never` return type.
   throw new Error('unreachable');
 }
 
@@ -85,7 +82,7 @@ async function waitFor(cond: () => boolean, timeoutMs: number, label: string): P
 }
 
 /**
- * Main-process observation of main→renderer IPC.
+ * Main-process observation of mainâ†’renderer IPC.
  *
  * webContents.send() delivers to the renderer's ipcRenderer; the main side
  * does NOT emit an event for it. To observe what the renderer receives, the
@@ -104,9 +101,8 @@ function hookWindow(win: BrowserWindow): void {
   }) as typeof orig;
 }
 
-/** Resolve on the next main→renderer send of `channel` (mirrored payload). */
-function once(win: BrowserWindow, channel: string, timeoutMs: number): Promise<unknown> {
-  void win;
+/** Resolve on the next mainâ†’renderer send of `channel` (mirrored payload). */
+function once(channel: string, timeoutMs: number): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const handler: Hook = (payload) => {
       unregister();
@@ -125,9 +121,8 @@ function once(win: BrowserWindow, channel: string, timeoutMs: number): Promise<u
   });
 }
 
-/** Assert no main→renderer send of `channel` arrives for `windowMs`. */
-async function expectSilence(win: BrowserWindow, channel: string, windowMs: number): Promise<void> {
-  void win;
+/** Assert no mainâ†’renderer send of `channel` arrives for `windowMs`. */
+async function expectSilence(channel: string, windowMs: number): Promise<void> {
   let fired = false;
   const handler: Hook = () => {
     fired = true;
@@ -189,7 +184,7 @@ async function setupRole(): Promise<never> {
   setCaptureMode('off', 'main');
   await sleep(400);
 
-  /** Make the dock visible but unfocused — i.e. "the user is in another app". */
+  /** Make the dock visible but unfocused â€” i.e. "the user is in another app". */
   const makeExternal = async (): Promise<void> => {
     dock.hide();
     dock.showInactive();
@@ -198,10 +193,10 @@ async function setupRole(): Promise<never> {
 
   const tests: Array<[string, () => Promise<void>]> = [];
 
-  // --- T1: text copied while the user works "in another app" → captured
+  // --- T1: text copied while the user works "in another app" â†’ captured
   tests.push(['text capture (dock)', async () => {
     await makeExternal();
-    const p = once(dock, 'clipboard:text', 8000);
+    const p = once('clipboard:text', 8000);
     clipboard.writeText(S.t1);
     const payload = (await p) as { text: string; noteId: string | null };
     if (payload.text !== S.t1) throw new Error('wrong text payload');
@@ -214,44 +209,43 @@ async function setupRole(): Promise<never> {
     );
   }]);
 
-  // --- T2: a copy made inside Dockly (focused window) → ignored, no loop
+  // --- T2: a copy made inside Dockly (focused window) â†’ ignored, no loop
   tests.push(['self-copy ignored (focused window)', async () => {
     dock.focus();
     await sleep(500);
     clipboard.writeText(S.t2);
-    await expectSilence(dock, 'clipboard:text', 1500);
+    await expectSilence('clipboard:text', 1500);
     await makeExternal();
   }]);
 
   // --- T3: explicit self-copy mark (DOM copy event in an unfocused window)
-  //         → ignored even though the window is not focused
+  //         â†’ ignored even though the window is not focused
   tests.push(['self-copy ignored (markSelfCopy)', async () => {
-    const { markSelfCopy } = await import('./clipboard');
     markSelfCopy();
     clipboard.writeText(S.t3);
-    await expectSilence(dock, 'clipboard:text', 1500);
+    await expectSilence('clipboard:text', 1500);
   }]);
 
-  // --- T4: capture disabled by setting → nothing anywhere
+  // --- T4: capture disabled by setting â†’ nothing anywhere
   tests.push(['capture off when setting disabled', async () => {
     state.settings = setSetting('autoCaptureText', false);
     clipboard.writeText(S.t4);
-    await expectSilence(dock, 'clipboard:text', 1500);
+    await expectSilence('clipboard:text', 1500);
     state.settings = setSetting('autoCaptureText', true);
   }]);
 
-  // --- T5: duplicate clipboard content → ignored
+  // --- T5: duplicate clipboard content â†’ ignored
   tests.push(['duplicate copy ignored', async () => {
-    const p = once(dock, 'clipboard:text', 8000);
+    const p = once('clipboard:text', 8000);
     clipboard.writeText(S.t5);
     await p;
-    // Same content again — duplicate-suppression must swallow it.
+    // Same content again â€” duplicate-suppression must swallow it.
     clipboard.writeText(S.t5);
-    await expectSilence(dock, 'clipboard:text', 1500);
+    await expectSilence('clipboard:text', 1500);
   }]);
 
-  // --- T6: screenshot while Dockly unfocused → deferred, delivered on return
-  tests.push(['screenshot deferred → delivered on focus', async () => {
+  // --- T6: screenshot while Dockly unfocused â†’ deferred, delivered on return
+  tests.push(['screenshot deferred â†’ delivered on focus', async () => {
     const img = nativeImage.createFromBuffer(RED_1PX_PNG);
     if (img.isEmpty()) throw new Error('test image failed to decode');
     const before = screenshotCount(note.id);
@@ -260,9 +254,9 @@ async function setupRole(): Promise<never> {
     clipboard.writeImage(img);
     await sleep(1800);
     if (screenshotCount(note.id) !== before) {
-      throw new Error('screenshot delivered while unfocused — should have been deferred');
+      throw new Error('screenshot delivered while unfocused â€” should have been deferred');
     }
-    const p = once(dock, 'clipboard:image', 8000);
+    const p = once('clipboard:image', 8000);
     dock.show();
     dock.focus();
     await p;
@@ -270,18 +264,14 @@ async function setupRole(): Promise<never> {
   }]);
 
   for (const [name, fn] of tests) {
-    if (halted) break;
     try {
       await fn();
       console.log('[cliptest] PASS ' + name);
     } catch (e) {
+      // fail() terminates the process synchronously — this catch only fires
+      // when the harness's own expectations throw.
       fail(name + ': ' + String(e));
     }
-  }
-
-  if (halted) {
-    await sleep(4000); // give the runner time to reap a failed run
-    process.exit(1);
   }
 
   // Persist what the renderer saved so the verify role can confirm restart
@@ -321,3 +311,4 @@ export async function runClipboardE2E(role: 'setup' | 'verify'): Promise<void> {
     fail('harness crashed: ' + String(e));
   }
 }
+
