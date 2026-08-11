@@ -8,7 +8,8 @@
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.main.json && tsc --noEmit -p tsconfig.renderer.json",
     "start": "npm run build && electron .",
-    "smoke": "npm run build && node scripts/smoke.mjs"
+    "smoke": "npm run build && node scripts/smoke.mjs",
+    "cliptest": "npm run build && node scripts/cliptest.mjs --skip-build"
   },
   "dependencies": {
     "@tiptap/extension-color": "^2.11.5",
