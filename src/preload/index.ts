@@ -104,6 +104,7 @@ const api = {
 
   clipboard: {
     setCaptureMode: (mode: 'off' | 'editor' | 'awaiting') => invoke<'off' | 'editor' | 'awaiting'>('clipboard:set-capture-mode', mode),
+    markSelfCopy: () => invoke<void>('clipboard:mark-self-copy'),
   },
 
   window: {

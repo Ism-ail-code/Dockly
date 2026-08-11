@@ -1,30 +1,49 @@
 import { clipboard, BrowserWindow } from 'electron';
 import { state } from './state';
 import { getMainWindow, getDockWindow } from './windows';
+import { startClipboardNotify, stopClipboardNotify, getClipboardNotifySource } from './clipboard-notify';
 
 export type CaptureMode = 'off' | 'editor' | 'awaiting';
 
 /**
- * Capture mode is reported per window by each renderer:
- *  - 'editor'   - a note editor is open; auto-insert screenshots into the note.
- *  - 'awaiting' - Dockly is explicitly waiting for a screenshot (e.g. annotator open).
- *  - 'off'      - no note is active; Dockly must not consume the clipboard.
+ * Clipboard handling — Windows clipboard-change notifications.
  *
- * With the sticky-note-first layout both the dock (primary workspace) and the
- * main window (library) can be in editor mode, so each window reports its own
- * mode and the clipboard watcher stays active while either is "hot".
+ * The OS notifier (AddClipboardFormatListener / WM_CLIPBOARDUPDATE via a
+ * koffi worker thread, PowerShell fallback) reports every clipboard change;
+ * this module reacts event-driven. Nothing here polls the clipboard.
  *
- * A screenshot is only ever consumed if the Dockly window that is currently
- * focused and visible is in an active mode. If the user is snipping for another
- * application - Dockly minimized, hidden, or simply not focused - the image is
- * silently skipped.
+ * Two independent captures can happen on a change:
+ *
+ *  1. Screenshots — only consumed while the user is actually working in a
+ *     Dockly window (focused, visible, note/annotator open). If Dockly is
+ *     not focused when the image lands, it is remembered and delivered the
+ *     moment the user returns to Dockly (bounded window).
+ *
+ *  2. Copied text (Ctrl + C) — captured while the user works in OTHER
+ *     applications, as long as the dock (or the main editor) has an active
+ *     note and the "Auto Capture Copied Text" setting is enabled. Copies made
+ *     inside Dockly itself are recognized and ignored (no feedback loops).
  */
 
 const modes: Record<'main' | 'dock', CaptureMode> = { main: 'off', dock: 'off' };
 let lastSig = '';
 let lastTextSig = '';
 let active = false;
-let timer: NodeJS.Timeout | null = null;
+
+// ----- screenshot delivery state -----
+// When an image lands while no Dockly window is focused, we remember it and
+// deliver once the user returns (or give up after a bounded time).
+let pendingImgSig = '';
+let pendingImgAt = 0;
+let pendingImgTimer: NodeJS.Timeout | null = null;
+const PENDING_IMAGE_LIFETIME_MS = 60_000;
+
+// ----- self-copy guard -----
+// Renderers report DOM `copy` events that originate inside Dockly. Combined
+// with the focused-window check, this ensures Dockly never re-captures text
+// that it copied itself.
+let lastSelfCopyAt = 0;
+const SELF_COPY_WINDOW_MS = 1200;
 
 function signature(buf: Buffer): string {
   let h = 0x811c9dc5;
@@ -42,9 +61,6 @@ function textSignature(text: string): string {
 
 export function setCaptureMode(mode: CaptureMode, source: 'main' | 'dock'): void {
   modes[source] = mode;
-  const anyActive = modes.main !== 'off' || modes.dock !== 'off';
-  if (anyActive && !active) startClipboardWatcher();
-  else if (!anyActive && active) stopClipboardWatcher();
 }
 
 /** The active, foreground Dockly window the user is working in — or null. */
@@ -81,15 +97,64 @@ function modeOf(target: BrowserWindow | null): CaptureMode {
   return target === getDockWindow() ? modes.dock : modes.main;
 }
 
-function tick(): void {
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+
+/** Starts the event-driven clipboard listener. Call once after app ready. */
+export function initClipboardListener(): void {
+  if (active) return;
+  active = true;
+  primeSignature();
+
+  const source = startClipboardNotify(onClipboardChanged);
+  if (source === 'none') {
+    console.log('[clipboard] no native clipboard notifier available — capture disabled');
+  }
+
+  // If a screenshot is waiting for a focused Dockly window, deliver it the
+  // moment the user returns — no polling involved. Windows may be created
+  // after this call, so the hooks are re-attached on every change event too.
+  ensureFocusHooks();
+}
+
+// Focus hooks for deferred screenshot delivery. Kept in a Set keyed by window
+// so windows created after boot (e.g. the dock) are picked up automatically.
+const focusHooked = new Set<BrowserWindow>();
+let onWindowFocus: () => void = () => {
+  if (pendingImgSig) tryDeliverPendingImage();
+};
+
+function ensureFocusHooks(): void {
+  for (const w of [getMainWindow(), getDockWindow()]) {
+    if (!w || w.isDestroyed() || focusHooked.has(w)) continue;
+    focusHooked.add(w);
+    w.on('focus', onWindowFocus);
+    w.on('closed', () => focusHooked.delete(w));
+  }
+}
+
+export function stopClipboardListener(): void {
+  active = false;
+  stopClipboardNotify();
+  if (pendingImgTimer) clearTimeout(pendingImgTimer);
+  pendingImgTimer = null;
+}
+
+// ---------------------------------------------------------------------------
+// Change handler (event-driven)
+// ---------------------------------------------------------------------------
+
+function onClipboardChanged(): void {
   if (!active) return;
-  const ignoreDupes = state.settings?.ignoreDuplicateClipboard ?? true;
+  ensureFocusHooks();
+  handleImageCapture();
+  handleTextCapture();
+}
 
-  // A capture belongs to Dockly only if the user is looking at Dockly right now
-  // AND the window they are looking at is in an active note context.
-  const target = activeForegroundWindow();
-  if (modeOf(target) === 'off') return;
+// ----- screenshots -----
 
+function handleImageCapture(): void {
   let img;
   try {
     img = clipboard.readImage();
@@ -97,53 +162,169 @@ function tick(): void {
     /* clipboard can throw when locked */
     return;
   }
-  if (!img.isEmpty()) {
-    const png = img.toPNG();
-    const sig = signature(png);
-    const duplicate = sig === lastSig;
-    lastSig = sig;
-    if (duplicate && ignoreDupes) return;
+  if (img.isEmpty()) return;
 
-    if (!target) {
-      // Consume silently while backgrounded — never leak into a note.
-      state.setPendingScreenshot(null);
-      return;
-    }
+  const png = img.toPNG();
+  const sig = signature(png);
+  const ignoreDupes = state.settings?.ignoreDuplicateClipboard ?? true;
 
-    const size = img.getSize();
-    state.setPendingScreenshot(png);
-    target.webContents.send('clipboard:image', {
-      png: png.toString('base64'),
-      width: size.width,
-      height: size.height,
-      capturedAt: Date.now(),
-    });
+  // Already waiting to deliver this exact image? Keep waiting.
+  if (sig === pendingImgSig) return;
+  // Same image as the last delivered capture? That is not a new capture.
+  if (sig === lastSig && ignoreDupes) return;
+  lastSig = sig;
+
+  const fg = activeForegroundWindow();
+  if (fg && modeOf(fg) !== 'off') {
+    deliverScreenshot(fg, png, img);
+    return;
   }
+  // Dockly is not focused right now (the user is in another app). Remember the
+  // image and deliver when they return to Dockly.
+  pendingImgSig = sig;
+  pendingImgAt = Date.now();
+  if (pendingImgTimer) clearTimeout(pendingImgTimer);
+  pendingImgTimer = setTimeout(discardPendingImage, PENDING_IMAGE_LIFETIME_MS);
+}
 
-  // Optional: capture copied text (Ctrl + C) into the active note.
-  if (state.settings?.autoCaptureText) {
-    let text = '';
-    try {
-      text = (clipboard.readText() ?? '').trim();
-    } catch {
-      /* ignore */
-    }
-    if (text) {
-      const sig = textSignature(text);
-      const duplicate = sig === lastTextSig;
-      lastTextSig = sig;
-      if (duplicate && ignoreDupes) return;
-      if (!target) {
-        state.setPendingScreenshot(null);
-        return;
+function tryDeliverPendingImage(): void {
+  if (!pendingImgSig) return;
+  if (Date.now() - pendingImgAt > PENDING_IMAGE_LIFETIME_MS) {
+    discardPendingImage();
+    return;
+  }
+  let img;
+  try {
+    img = clipboard.readImage();
+  } catch {
+    return;
+  }
+  if (img.isEmpty() || signature(img.toPNG()) !== pendingImgSig) {
+    // The image is gone (or replaced) — nothing to deliver anymore.
+    discardPendingImage();
+    return;
+  }
+  const fg = activeForegroundWindow();
+  if (!fg || modeOf(fg) === 'off') return; // still unfocused — keep waiting
+  pendingImgSig = '';
+  deliverScreenshot(fg, img.toPNG(), img);
+}
+
+function discardPendingImage(): void {
+  pendingImgSig = '';
+  if (pendingImgTimer) clearTimeout(pendingImgTimer);
+  pendingImgTimer = null;
+}
+
+function deliverScreenshot(target: BrowserWindow, png: Buffer, img: Electron.NativeImage): void {
+  if (pendingImgSig === signature(png)) pendingImgSig = '';
+  const size = img.getSize();
+  state.setPendingScreenshot(png);
+  target.webContents.send('clipboard:image', {
+    png: png.toString('base64'),
+    width: size.width,
+    height: size.height,
+    capturedAt: Date.now(),
+  });
+}
+
+// ----- copied text (Ctrl + C) -----
+
+/** Which Dockly window(s) should receive captured text right now. */
+function textCaptureTargets(): BrowserWindow[] {
+  const noteId = state.activeNoteId;
+  if (!noteId) return [];
+
+  const dock = getDockWindow();
+  const dockActive =
+    dock &&
+    !dock.isDestroyed() &&
+    dock.isVisible() &&
+    !dock.isMinimized() &&
+    state.dock.open &&
+    !state.dock.collapsed &&
+    state.dock.noteId === noteId &&
+    modes.dock === 'editor';
+  if (dockActive) return [dock as BrowserWindow];
+
+  const main = getMainWindow();
+  if (main && !main.isDestroyed() && main.isVisible() && !main.isMinimized() && modes.main === 'editor') {
+    return [main];
+  }
+  return [];
+}
+
+/**
+ * True when the clipboard change almost certainly originated inside Dockly:
+ * either a Dockly window holds focus, or a Dockly renderer reported a DOM
+ * `copy` event moments ago. Such copies must never be captured again.
+ */
+function isSelfCopy(): boolean {
+  if (Date.now() - lastSelfCopyAt < SELF_COPY_WINDOW_MS) return true;
+  const main = getMainWindow();
+  const dock = getDockWindow();
+  for (const w of [main, dock]) {
+    if (w && !w.isDestroyed() && w.isVisible() && !w.isMinimized() && w.isFocused()) return true;
+  }
+  return false;
+}
+
+function handleTextCapture(): void {
+  let text = '';
+  try {
+    text = clipboard.readText() ?? '';
+  } catch {
+    /* clipboard can throw when locked */
+    return;
+  }
+  text = text.trim();
+  if (!text) return;
+
+  // Remember every observed text so stale clipboard content is never treated
+  // as a fresh capture later (including while the feature is switched off).
+  const sig = textSignature(text);
+  const isDup = sig === lastTextSig;
+  lastTextSig = sig;
+
+  const guards: Record<string, boolean> = {
+    autoCaptureText: !state.settings?.autoCaptureText,
+    isSelfCopy: isSelfCopy(),
+    noActiveNote: !state.activeNoteId,
+    isDup: isDup && (state.settings?.ignoreDuplicateClipboard ?? true),
+  };
+  if (process.env.DOCKLY_CLIP_TEST === '1') {
+    console.log('[clipboard] change text=', JSON.stringify(text.slice(0, 40)), 'guards=', JSON.stringify(guards));
+  }
+  if (guards.autoCaptureText || guards.isSelfCopy || guards.noActiveNote || guards.isDup) return;
+
+  const targets = textCaptureTargets();
+  if (process.env.DOCKLY_CLIP_TEST === '1') {
+    console.log('[clipboard] targets=', targets.length);
+  }
+  if (targets.length === 0) return;
+
+  const payload = { text, noteId: state.activeNoteId, capturedAt: Date.now() };
+  for (const t of targets) {
+    if (!t.isDestroyed()) {
+      if (process.env.DOCKLY_CLIP_TEST === '1') {
+        console.log('[clipboard] sending clipboard:text to win id=%s destroyed=%s', t.webContents.id, t.isDestroyed());
       }
-      target.webContents.send('clipboard:text', { text, capturedAt: Date.now() });
+      t.webContents.send('clipboard:text', payload);
     }
   }
 }
 
-/** Remember the image currently on the clipboard at start time so we never
- *  treat something a user copied before Dockly began watching as a new capture. */
+/** A renderer reported that the user copied text inside Dockly. */
+export function markSelfCopy(): void {
+  lastSelfCopyAt = Date.now();
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Remember the content already on the clipboard at start time so we never
+ *  treat something copied before Dockly began watching as a new capture. */
 function primeSignature(): void {
   try {
     const img = clipboard.readImage();
@@ -159,19 +340,25 @@ function primeSignature(): void {
   }
 }
 
-export function startClipboardWatcher(): void {
-  if (active) return;
-  active = true;
-  primeSignature();
-  timer = setInterval(tick, 320);
-}
-
-export function stopClipboardWatcher(): void {
-  active = false;
-  if (timer) clearInterval(timer);
-  timer = null;
-}
-
 export function resetClipboardSignature(): void {
   lastSig = '';
+}
+
+/** Diagnostics for the QA harness. */
+export function clipboardDiagnostics(): {
+  active: boolean;
+  listener: string;
+  modes: { main: CaptureMode; dock: CaptureMode };
+  activeNoteId: string | null;
+  dockNoteId: string | null;
+  selfCopyWindowMs: number;
+} {
+  return {
+    active,
+    listener: getClipboardNotifySource(),
+    modes: { main: modes.main, dock: modes.dock },
+    activeNoteId: state.activeNoteId,
+    dockNoteId: state.dock.noteId,
+    selfCopyWindowMs: SELF_COPY_WINDOW_MS,
+  };
 }

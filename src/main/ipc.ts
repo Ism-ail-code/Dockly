@@ -16,7 +16,7 @@ import {
   setDockTransparency,
   applySpellChecker,
 } from './windows';
-import { setCaptureMode, getCaptureMode, isCaptureEligible, isWatcherActive } from './clipboard';
+import { setCaptureMode, getCaptureMode, isCaptureEligible, isWatcherActive, markSelfCopy } from './clipboard';
 import { startDockAutoHidePoll, stopDockAutoHidePoll } from './autohide';
 import { VERSION_INTERVAL_MS, DOCK_MIN_WIDTH, DOCK_MAX_WIDTH } from '../shared/defaults';
 import type { AccentColor, Settings } from '../shared/types';
@@ -160,6 +160,10 @@ export function registerIpc(): void {
   handle('clipboard:set-capture-mode', (e, mode: 'off' | 'editor' | 'awaiting') => {
     setCaptureMode(mode, senderIsDock(e) ? 'dock' : 'main');
     return getCaptureMode();
+  });
+  handle('clipboard:mark-self-copy', () => {
+    markSelfCopy();
+    return true;
   });
 
   // ---------- dock ----------
