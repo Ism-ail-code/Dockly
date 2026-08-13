@@ -34,5 +34,5 @@ await esbuild.build({
   logLevel: 'info',
 });
 
-const res = spawnSync(process.execPath, ['--test', outdir], { stdio: 'inherit' });
+const res = spawnSync(process.execPath, ['--test', `${outdir.replace(/\\/g, '/')}/*.test.js`], { stdio: 'inherit' });
 process.exit(res.status ?? 1);
