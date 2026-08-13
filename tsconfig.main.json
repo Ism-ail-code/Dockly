@@ -3,5 +3,5 @@
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "scripts/**/*.mjs"]
+  "include": ["src/main/**/*", "src/preload/**/*", "src/shared/**/*", "scripts/**/*.mjs", "tests/**/*"]
 }
