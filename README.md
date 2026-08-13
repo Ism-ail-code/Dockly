@@ -18,6 +18,7 @@ A sticky-note-first note-taking desktop app for students, built with Electron, R
 ```bash
 npm install
 npm run typecheck   # TypeScript checks for main + renderer
+npm run test        # unit tests (node:test, bundled via esbuild)
 npm run build       # bundles main, preload and renderer into dist/
 npm run smoke       # build + scripted UI end-to-end regression
 npm run cliptest    # build + clipboard capture end-to-end harness (setup + verify)

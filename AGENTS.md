@@ -4,14 +4,15 @@
 
 ```bash
 npm run typecheck   # tsc for main + renderer (both must pass)
+npm run test        # unit tests (node:test, bundled via esbuild)
 npm run build       # esbuild main/preload/worker + vite renderer
 npm run smoke       # scripted UI end-to-end regression in the real app
 npm run cliptest    # clipboard capture E2E harness (setup + verify roles)
 ```
 
-Run `npm run typecheck` and `npm run build` after any change. For renderer UI
-changes also run `npm run smoke`; for clipboard-capture changes run
-`npm run cliptest`.
+Run `npm run typecheck` and `npm run build` after any change. When test files
+under `tests/` change, run `npm run test`. For renderer UI changes also run
+`npm run smoke`; for clipboard-capture changes run `npm run cliptest`.
 
 ## Architecture notes
 
