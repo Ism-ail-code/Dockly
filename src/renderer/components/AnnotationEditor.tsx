@@ -114,7 +114,7 @@ export function AnnotationEditor() {
   useEffect(() => {
     if (!open || !target) return;
     (async () => {
-      const dataUrl = await window.dockly.screenshots.read(target);
+      const dataUrl = await window.nock.screenshots.read(target);
       if (!dataUrl) {
         setOpen(false);
         return;
@@ -386,7 +386,7 @@ export function AnnotationEditor() {
         binary += String.fromCharCode(...buf.subarray(i, i + CHUNK));
       }
       const b64 = btoa(binary);
-      await window.dockly.screenshots.replace(target, b64);
+      await window.nock.screenshots.replace(target, b64);
       toast.success('Annotation saved to your note');
       setOpen(false);
     } catch (err) {

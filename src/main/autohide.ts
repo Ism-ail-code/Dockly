@@ -2,7 +2,7 @@ import { getMainWindow, getDockWindow, toggleDockCollapse } from './windows';
 import { state } from './state';
 
 /**
- * Auto-hide sidebar: while the Dockly main window is the focused window the dock
+ * Auto-hide sidebar: while the Nock main window is the focused window the dock
  * tucks away (collapses to the edge); as soon as the user switches to another app
  * the dock slides back out so the study companion is always available.
  */

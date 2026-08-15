@@ -1,11 +1,11 @@
-﻿/**
+/**
  * Clipboard capture end-to-end harness (scripts/cliptest.mjs).
  *
  * Runs inside the real app (built, real windows, real renderer) against a
  * scratch user-data dir. Two roles:
  *
  *  'setup'  â€” boot, open a note in the dock, simulate real clipboard changes
- *             (Ctrl+C in "another app", copies inside Dockly, screenshot),
+ *             (Ctrl+C in "another app", copies inside Nock, screenshot),
  *             assert the event-driven capture delivers to the right window
  *             and that the renderer actually inserts + saves the text.
  *  'verify' â€” relaunch, confirm the captured text survived the restart and
@@ -175,7 +175,7 @@ async function setupRole(): Promise<never> {
   hookWindow(main);
 
   // blur() does not reliably drop focus on Windows; hide the main window so
-  // the only Dockly window in the focus equation is the dock.
+  // the only Nock window in the focus equation is the dock.
   main.hide();
 
   // The main renderer reports 'editor' whenever a note is open; make sure the
@@ -209,7 +209,7 @@ async function setupRole(): Promise<never> {
     );
   }]);
 
-  // --- T2: a copy made inside Dockly (focused window) â†’ ignored, no loop
+  // --- T2: a copy made inside Nock (focused window) â†’ ignored, no loop
   tests.push(['self-copy ignored (focused window)', async () => {
     dock.focus();
     await sleep(500);
@@ -244,7 +244,7 @@ async function setupRole(): Promise<never> {
     await expectSilence('clipboard:text', 1500);
   }]);
 
-  // --- T6: screenshot while Dockly unfocused â†’ deferred, delivered on return
+  // --- T6: screenshot while Nock unfocused â†’ deferred, delivered on return
   tests.push(['screenshot deferred â†’ delivered on focus', async () => {
     const img = nativeImage.createFromBuffer(RED_1PX_PNG);
     if (img.isEmpty()) throw new Error('test image failed to decode');

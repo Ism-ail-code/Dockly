@@ -116,16 +116,16 @@ export const useApp = create<AppState>((set, get) => ({
   remoteContent: null,
 
   boot: async () => {
-    const settings = await window.dockly.settings.get();
-    const subjects = await window.dockly.subjects.list();
-    const dockState = await window.dockly.dock.getState();
+    const settings = await window.nock.settings.get();
+    const subjects = await window.nock.subjects.list();
+    const dockState = await window.nock.dock.getState();
     get().applySettings(settings);
     set({ booted: true, subjects, dockState });
     await Promise.all([get().refreshRecents(), get().refreshFavorites(), get().refreshTags()]);
     void get().reportCaptureMode();
     // Session resume: jump back to the last note the user was working on.
     if (settings.sessionResume && settings.lastNoteId) {
-      const last = await window.dockly.notes.get(settings.lastNoteId).catch(() => null);
+      const last = await window.nock.notes.get(settings.lastNoteId).catch(() => null);
       if (last && !last.isArchived) {
         set({ currentNoteId: last.id, view: 'editor', navFrom: 'dashboard' });
         void get().reportCaptureMode();
@@ -144,7 +144,7 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   setSetting: async (key, value) => {
-    const settings = await window.dockly.settings.set(key, value);
+    const settings = await window.nock.settings.set(key, value);
     get().applySettings(settings);
   },
 
@@ -167,10 +167,10 @@ export const useApp = create<AppState>((set, get) => ({
     // a note opened from a subject list returns to that subject.
     const from = s.view === 'subject' ? 'subject' : 'dashboard';
     set({ currentNoteId: id, view: 'editor', navFrom: from, prevView: s.view });
-    await window.dockly.notes.get(id);
+    await window.nock.notes.get(id);
     await Promise.all([get().refreshNotes(), get().refreshRecents(), get().refreshFavorites()]);
     // Remember where the user left off (used by session resume).
-    void window.dockly.settings.set('lastNoteId', id);
+    void window.nock.settings.set('lastNoteId', id);
     void get().reportCaptureMode();
   },
 
@@ -192,7 +192,7 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   createNote: async (subjectId, title) => {
-    const note = await window.dockly.notes.create(subjectId, title ?? '');
+    const note = await window.nock.notes.create(subjectId, title ?? '');
     set({ currentNoteId: note.id, view: 'editor', navFrom: 'subject' });
     await get().openSubject(subjectId);
     set({ currentNoteId: note.id, view: 'editor' });
@@ -203,17 +203,17 @@ export const useApp = create<AppState>((set, get) => ({
 
   refreshNotes: async (subjectId) => {
     const id = subjectId ?? get().currentSubjectId;
-    const notes = await window.dockly.notes.list(id ?? undefined);
+    const notes = await window.nock.notes.list(id ?? undefined);
     set({ notes });
   },
 
   refreshSubjects: async () => {
-    const subjects = await window.dockly.subjects.list();
+    const subjects = await window.nock.subjects.list();
     set({ subjects });
   },
 
   refreshRecents: async () => {
-    const all = await window.dockly.notes.list(undefined, false);
+    const all = await window.nock.notes.list(undefined, false);
     const recents = all
       .filter((n) => !n.isFavorite)
       .sort((a, b) => b.updatedAt - a.updatedAt)
@@ -222,12 +222,12 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   refreshFavorites: async () => {
-    const all = await window.dockly.notes.list(undefined, false);
+    const all = await window.nock.notes.list(undefined, false);
     set({ favorites: all.filter((n) => n.isFavorite).slice(0, 8) });
   },
 
   refreshTags: async () => {
-    const all = await window.dockly.notes.list(undefined, false);
+    const all = await window.nock.notes.list(undefined, false);
     const tagSet = new Set<string>();
     for (const n of all) for (const t of n.tags) tagSet.add(t);
     set({ tags: Array.from(tagSet).sort() });
@@ -268,12 +268,12 @@ export const useApp = create<AppState>((set, get) => ({
 
   reportCaptureMode: async () => {
     const s = get();
-    // Dockly consumes screenshots only while actually using it.
+    // Nock consumes screenshots only while actually using it.
     const mode: 'off' | 'editor' | 'awaiting' = s.annotationOpen
       ? 'awaiting'
       : s.view === 'editor' && s.currentNoteId
         ? 'editor'
         : 'off';
-    await window.dockly.clipboard.setCaptureMode(mode);
+    await window.nock.clipboard.setCaptureMode(mode);
   },
 }));

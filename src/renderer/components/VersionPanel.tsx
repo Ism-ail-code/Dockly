@@ -11,7 +11,7 @@ export function VersionPanel() {
 
   useEffect(() => {
     if (!open || !noteId) return;
-    void window.dockly.versions.list(noteId).then(setVersions);
+    void window.nock.versions.list(noteId).then(setVersions);
   }, [open, noteId]);
 
   // Esc closes the version history panel.
@@ -31,7 +31,7 @@ export function VersionPanel() {
 
   const restore = async (v: VersionSnapshot) => {
     if (!noteId) return;
-    await window.dockly.versions.restore(noteId, v.id);
+    await window.nock.versions.restore(noteId, v.id);
     setOpen(false);
   };
 

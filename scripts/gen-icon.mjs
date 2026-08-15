@@ -1,4 +1,4 @@
-// Generates the Dockly app icon (512x512 PNG) with zero dependencies.
+// Generates the Nock app icon (512x512 PNG) with zero dependencies.
 // Draws a rounded-square indigo-violet gradient tile with a white dock glyph.
 import zlib from 'node:zlib';
 import fs from 'node:fs';

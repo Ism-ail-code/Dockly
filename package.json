@@ -1,7 +1,9 @@
 {
-  "name": "dockly",
-  "version": "0.1.0",
-  "description": "Dockly - a premium study companion for Windows. Notes that dock beside your work.",
+  "name": "nock",
+  "version": "1.0.0",
+  "description": "Nock - a premium study companion for Windows. Notes that dock beside your work.",
+  "author": "Nock",
+  "homepage": "https://github.com/anomalyco/opencode",
   "main": "dist/main/index.js",
   "private": true,
   "scripts": {
@@ -10,7 +12,9 @@
     "test": "node scripts/test.mjs",
     "start": "npm run build && electron .",
     "smoke": "npm run build && node scripts/smoke.mjs",
-    "cliptest": "npm run build && node scripts/cliptest.mjs --skip-build"
+    "cliptest": "npm run build && node scripts/cliptest.mjs --skip-build",
+    "dist": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable"
   },
   "dependencies": {
     "@tiptap/extension-color": "^2.11.5",
@@ -43,8 +47,45 @@
     "@types/sql.js": "^1.4.9",
     "@vitejs/plugin-react": "^4.3.4",
     "electron": "^37.0.0",
+    "electron-builder": "^26.15.3",
     "esbuild": "^0.25.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.7"
+  },
+  "build": {
+    "appId": "com.nock.app",
+    "productName": "Nock",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "electronDist": "node_modules/electron/dist",
+    "npmRebuild": false,
+    "files": [
+      "dist/**",
+      "!dist/tests/**"
+    ],
+    "asarUnpack": [
+      "**/node_modules/koffi/**"
+    ],
+    "win": {
+      "icon": "src/assets/icon.png",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false,
+      "artifactName": "Nock-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "Nock-${version}-portable.${ext}"
+    }
   }
 }

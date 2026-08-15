@@ -118,9 +118,9 @@ const api = {
 
   onViewNavigate: (cb: (view: string) => void) => on('view:navigate', (p) => cb(p as string)),
 
-  clearPendingScreenshot: () => invoke<void>('dockly:clear-pending-screenshot'),
+  clearPendingScreenshot: () => invoke<void>('nock:clear-pending-screenshot'),
 };
 
-export type DocklyApi = typeof api;
+export type NockApi = typeof api;
 
-contextBridge.exposeInMainWorld('dockly', api);
+contextBridge.exposeInMainWorld('nock', api);

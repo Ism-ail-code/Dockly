@@ -40,7 +40,7 @@ export function App() {
 
   // ---------- clipboard: screenshot captured ----------
   useEffect(() => {
-    const off = window.dockly.on('clipboard:image', (p) => {
+    const off = window.nock.on('clipboard:image', (p) => {
       const payload = p as ClipPayload;
       const state = useApp.getState();
       const canAutoInsert = !!state.currentNoteId && state.settings.autoInsertScreenshots;
@@ -75,7 +75,7 @@ export function App() {
 
   // ---------- clipboard: captured text (Ctrl + C) ----------
   useEffect(() => {
-    const off = window.dockly.on('clipboard:text', (p) => {
+    const off = window.nock.on('clipboard:text', (p) => {
       const payload = p as TextPayload & { noteId?: string | null };
       const state = useApp.getState();
       if (!state.currentNoteId || !state.settings.autoCaptureText) return;
@@ -87,16 +87,16 @@ export function App() {
     return off;
   }, [toast]);
 
-  // Copies made inside Dockly must never be re-captured into a note.
+  // Copies made inside Nock must never be re-captured into a note.
   useEffect(() => {
-    const onCopy = () => void window.dockly.clipboard.markSelfCopy();
+    const onCopy = () => void window.nock.clipboard.markSelfCopy();
     document.addEventListener('copy', onCopy);
     return () => document.removeEventListener('copy', onCopy);
   }, []);
 
   // ---------- settings sync from main ----------
   useEffect(() => {
-    const off = window.dockly.on('sync:settings', (s) => {
+    const off = window.nock.on('sync:settings', (s) => {
       useApp.getState().applySettings(s as typeof settings);
     });
     return off;
@@ -104,7 +104,7 @@ export function App() {
 
   // ---------- dock state sync ----------
   useEffect(() => {
-    const off = window.dockly.on('dock:state', (d) => {
+    const off = window.nock.on('dock:state', (d) => {
       useApp.getState().setDockState(d as never);
     });
     return off;
@@ -112,7 +112,7 @@ export function App() {
 
   // ---------- navigation from the dock (dashboard / settings buttons) ----------
   useEffect(() => {
-    const off = window.dockly.onViewNavigate((v) => {
+    const off = window.nock.onViewNavigate((v) => {
       const view = v as 'dashboard' | 'subject' | 'editor' | 'settings' | 'archive';
       const s = useApp.getState();
       if (view === 'editor') {
@@ -130,7 +130,7 @@ export function App() {
 
   // ---------- content sync (from dock window) ----------
   useEffect(() => {
-    const off = window.dockly.on('sync:note-content', (c) => {
+    const off = window.nock.on('sync:note-content', (c) => {
       useApp.getState().pushRemoteContent(c as { noteId: string; content: string; updatedAt: number });
     });
     return off;
@@ -157,20 +157,21 @@ export function App() {
       }
       if (mod && e.shiftKey && e.key.toLowerCase() === 'f' && s.currentNoteId) {
         e.preventDefault();
-        void window.dockly.notes.setFavorite(s.currentNoteId, !s.notes.find((n) => n.id === s.currentNoteId)?.isFavorite);
+        void window.nock.notes.setFavorite(s.currentNoteId, !s.notes.find((n) => n.id === s.currentNoteId)?.isFavorite);
         void s.refreshFavorites();
+        void s.refreshNotes();
         return;
       }
       if (mod && e.shiftKey && e.key.toLowerCase() === 'a' && s.currentNoteId) {
         e.preventDefault();
-        void window.dockly.notes.archive(s.currentNoteId, true);
+        void window.nock.notes.archive(s.currentNoteId, true);
         s.goBack();
         void s.refreshNotes();
         return;
       }
       if (mod && e.key.toLowerCase() === 'd' && !e.shiftKey && s.currentNoteId) {
         e.preventDefault();
-        void window.dockly.notes.duplicate(s.currentNoteId);
+        void window.nock.notes.duplicate(s.currentNoteId);
         toast.success('Note duplicated');
         return;
       }
@@ -187,7 +188,7 @@ export function App() {
       <div className="app-bg">
         <div className="boot-screen">
           <div className="boot-logo pulse-glow">D</div>
-          <div className="t-sub">Opening Dockly…</div>
+          <div className="t-sub">Opening Nock…</div>
         </div>
         <TooltipHost />
       </div>
@@ -225,7 +226,7 @@ export function App() {
             </div>
             <div className="modal-body">
               <p className="t-sub">
-                A screenshot was just captured and Dockly is ready to drop it at the end of your current note.
+                A screenshot was just captured and Nock is ready to drop it at the end of your current note.
               </p>
             </div>
             <div className="modal-foot">

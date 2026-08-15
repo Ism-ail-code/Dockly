@@ -14,6 +14,7 @@ import {
   updateTitlebarTheme,
   setDockOnTop,
   setDockTransparency,
+  recreateDockWindow,
   applySpellChecker,
 } from './windows';
 import { setCaptureMode, getCaptureMode, isCaptureEligible, isWatcherActive, markSelfCopy } from './clipboard';
@@ -43,9 +44,12 @@ function applySettingsSideEffects(key: string, settings: Settings): void {
     if (settings.dockAutoHide) startDockAutoHidePoll();
     else stopDockAutoHidePoll();
   }
-  if (key === '*' || key === 'dockTransparencyEnabled' || key === 'dockTransparency') {
+  if (key === '*' || key === 'dockTransparencyEnabled' || key === 'dockTransparency' || key === 'dockGlassStyle') {
     setDockTransparency(settings.dockTransparencyEnabled, settings.dockTransparency);
   }
+  // Glass-style changes rebuild the dock window so the OS material is applied
+  // at creation time (live switches can leave the old blur stuck on).
+  if (key === 'dockGlassStyle') recreateDockWindow();
   if (key === '*' || key === 'focusMode') state.setDockConfig({ focusMode: settings.focusMode });
   if (key === '*' || key === 'spellCheck') applySpellChecker(settings.spellCheck);
   if (key === '*' || key === 'launchOnStartup') {
@@ -156,7 +160,7 @@ export function registerIpc(): void {
   });
   handle('stats:today', () => db.getTodayStats());
 
-  // ---------- clipboard capture mode (renderer reports where Dockly is) ----------
+  // ---------- clipboard capture mode (renderer reports where Nock is) ----------
   handle('clipboard:set-capture-mode', (e, mode: 'off' | 'editor' | 'awaiting') => {
     setCaptureMode(mode, senderIsDock(e) ? 'dock' : 'main');
     return getCaptureMode();
@@ -299,11 +303,11 @@ export function registerIpc(): void {
   });
 
   // ---------- misc ----------
-  handle('dockly:clear-pending-screenshot', () => state.setPendingScreenshot(null));
+  handle('nock:clear-pending-screenshot', () => state.setPendingScreenshot(null));
 }
 
 export function registerProtocol(): void {
-  protocol.handle('dockly-shot', (request) => {
+  protocol.handle('nock-shot', (request) => {
     const url = new URL(request.url);
     const fileName = decodeURIComponent(url.pathname.replace(/^\//, ''));
     const buf = db.readScreenshotFile(fileName);

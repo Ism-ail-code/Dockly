@@ -1,8 +1,8 @@
-import type { DocklyApi } from '../preload';
+import type { NockApi } from '../preload';
 
 declare global {
   interface Window {
-    dockly: DocklyApi;
+    nock: NockApi;
   }
 }
 

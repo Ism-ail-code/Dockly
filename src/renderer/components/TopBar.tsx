@@ -3,7 +3,7 @@ import { Moon, PanelLeft, PanelRight, Search, Settings, Sun, Sparkles } from 'lu
 import { useApp } from '@/app/store';
 import { useToast } from '@/components/ui';
 
-export function DocklyLogo({ size = 22 }: { size?: number }) {
+export function NockLogo({ size = 22 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
       <defs>
@@ -48,10 +48,10 @@ export function TopBar() {
 
   const toggleDock = async () => {
     if (dockState.open) {
-      await window.dockly.dock.close();
+      await window.nock.dock.close();
     } else {
-      await window.dockly.dock.open(currentNoteId);
-      toast.info('Dockly is now docked to your screen — keep studying!');
+      await window.nock.dock.open(currentNoteId);
+      toast.info('Nock is now docked to your screen — keep studying!');
     }
   };
 
@@ -60,8 +60,8 @@ export function TopBar() {
       <div className="topbar-drag" style={{ WebkitAppRegion: 'drag' } as CSSProperties} />
       <div className="topbar-inner">
         <button className="brand" onClick={() => setView('dashboard')} data-tooltip="Back to dashboard" data-tooltip-side="right" aria-label="Dashboard">
-          <DocklyLogo />
-          <span className="brand-name t-display">Dockly</span>
+          <NockLogo />
+          <span className="brand-name t-display">Nock</span>
         </button>
 
         <div className="topbar-spacer" />

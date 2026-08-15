@@ -1,5 +1,5 @@
 /* ============================================================
-   Dockly Design Tokens
+   Nock Design Tokens
    ============================================================ */
 
 :root {
@@ -73,7 +73,7 @@
 [data-theme="light"] {
   color-scheme: light;
   --bg: #f3f4f8;
-  --bg-acrylic: rgba(246, 247, 250, 0.62);
+  --bg-acrylic: rgba(246, 247, 250, 0.88);
   --bg-glow-1: rgba(99, 102, 241, 0.09);
   --bg-glow-2: rgba(14, 165, 233, 0.07);
 
@@ -87,7 +87,7 @@
 
   --text-1: #131a2b;
   --text-2: #566073;
-  --text-3: #9aa3b2;
+  --text-3: #6b7688;
 
   --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.05), 0 1px 3px rgba(16, 24, 40, 0.07);
   --shadow-2: 0 3px 10px rgba(16, 24, 40, 0.08), 0 1px 3px rgba(16, 24, 40, 0.06);
@@ -107,7 +107,7 @@
 [data-theme="dark"] {
   color-scheme: dark;
   --bg: #101318;
-  --bg-acrylic: rgba(18, 20, 25, 0.66);
+  --bg-acrylic: rgba(18, 20, 25, 0.9);
   --bg-glow-1: rgba(99, 102, 241, 0.1);
   --bg-glow-2: rgba(14, 165, 233, 0.05);
 
@@ -121,7 +121,7 @@
 
   --text-1: #ecedf2;
   --text-2: #a4abb9;
-  --text-3: #666e7e;
+  --text-3: #7d8597;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.3);
   --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
@@ -141,7 +141,7 @@
 [data-theme="midnight"] {
   color-scheme: dark;
   --bg: #0a0d16;
-  --bg-acrylic: rgba(10, 13, 22, 0.72);
+  --bg-acrylic: rgba(10, 13, 22, 0.92);
   --bg-glow-1: rgba(99, 102, 241, 0.16);
   --bg-glow-2: rgba(88, 130, 246, 0.09);
 
@@ -155,7 +155,7 @@
 
   --text-1: #e9edfa;
   --text-2: #a9b2d0;
-  --text-3: #64708f;
+  --text-3: #7582a6;
 
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 4px 14px rgba(0, 0, 0, 0.5), 0 2px 4px rgba(0, 0, 0, 0.4);

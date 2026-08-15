@@ -1,4 +1,4 @@
-# Dockly — project commands
+# Nock — project commands
 
 ## Verify before finishing a task
 
@@ -20,8 +20,8 @@ under `tests/` change, run `npm run test`. For renderer UI changes also run
   The clipboard notifier worker (`src/main/clipboard-worker.ts`) is a separate
   esbuild entry — it must stay listed in `scripts/build.mjs`.
 - `koffi` is a native FFI module and must stay in the esbuild `external` list.
-- The QA harness (`scripts/cliptest.mjs`) sets `DOCKLY_CLIP_TEST=1` and a
-  scratch `DOCKLY_CLIP_USER_DATA`; `src/main/index.ts` switches to that user
+- The QA harness (`scripts/cliptest.mjs`) sets `NOCK_CLIP_TEST=1` and a
+  scratch `NOCK_CLIP_USER_DATA`; `src/main/index.ts` switches to that user
   data dir BEFORE `requestSingleInstanceLock` so it never collides with a
-  running Dockly. It intentionally uses `app.exit()` + a synchronous taskkill
+  running Nock. It intentionally uses `app.exit()` + a synchronous taskkill
   hammer to terminate — Electron's graceful quit can deadlock mid-test.

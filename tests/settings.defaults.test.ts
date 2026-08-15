@@ -19,6 +19,7 @@ const REQUIRED_KEYS: Record<keyof Settings, true> = {
   dockTransparencyEnabled: true,
   dockTransparencySlider: true,
   dockTransparency: true,
+  dockGlassStyle: true,
   dockSide: true,
   dockWidth: true,
   dockHeight: true,
@@ -70,6 +71,10 @@ describe('DEFAULT_SETTINGS', () => {
     assert.ok(DEFAULT_SETTINGS.dockTransparency >= 0.4 && DEFAULT_SETTINGS.dockTransparency <= 1);
   });
 
+  it('defaults to the frosted glass style', () => {
+    assert.equal(DEFAULT_SETTINGS.dockGlassStyle, 'frosted');
+  });
+
   it('keeps dock dimensions in sync with the dock constants', () => {
     assert.equal(DEFAULT_SETTINGS.dockWidth, DOCK_DEFAULT_WIDTH);
     assert.equal(DEFAULT_SETTINGS.dockHeight, DOCK_DEFAULT_HEIGHT);
@@ -77,7 +82,9 @@ describe('DEFAULT_SETTINGS', () => {
 
   it('stays silent, non-intrusive and offline-first out of the box', () => {
     assert.equal(DEFAULT_SETTINGS.sounds, false);
-    assert.equal(DEFAULT_SETTINGS.autoCaptureText, false);
+    // Clipboard capture works out of the box (opt-out, not opt-in); copies made
+    // inside Nock are never re-captured, so it stays non-intrusive.
+    assert.equal(DEFAULT_SETTINGS.autoCaptureText, true);
     assert.equal(DEFAULT_SETTINGS.autoInsertScreenshots, true);
     assert.equal(DEFAULT_SETTINGS.launchOnStartup, false);
     assert.equal(DEFAULT_SETTINGS.onboarded, false);

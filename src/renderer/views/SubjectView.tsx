@@ -154,22 +154,22 @@ function NoteCard({ note, index }: { note: Note; index: number }) {
 
   const actions = {
     favorite: async () => {
-      await window.dockly.notes.setFavorite(note.id, !note.isFavorite);
+      await window.nock.notes.setFavorite(note.id, !note.isFavorite);
       await Promise.all([refreshNotes(), refreshFavorites(), refreshRecents()]);
     },
     duplicate: async () => {
-      await window.dockly.notes.duplicate(note.id);
+      await window.nock.notes.duplicate(note.id);
       await Promise.all([refreshNotes(), refreshSubjects(), refreshRecents()]);
       toast.success('Note duplicated');
     },
     archive: async () => {
-      await window.dockly.notes.archive(note.id, true);
+      await window.nock.notes.archive(note.id, true);
       await Promise.all([refreshNotes(), refreshFavorites(), refreshRecents(), refreshSubjects()]);
       toast.success('Note archived');
     },
     remove: async () => {
       setConfirmDelete(false);
-      await window.dockly.notes.delete(note.id);
+      await window.nock.notes.delete(note.id);
       useApp.getState().deleteNoteLocal(note.id);
       await Promise.all([refreshNotes(), refreshFavorites(), refreshRecents(), refreshSubjects()]);
       toast.success('Note deleted');

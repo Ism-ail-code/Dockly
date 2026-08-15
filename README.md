@@ -1,6 +1,17 @@
-# Dockly
+# Nock
 
-A sticky-note-first note-taking desktop app for students, built with Electron, React, TypeScript, TipTap and SQLite. Dockly opens into a compact, always-on-top sticky workspace so the journey from "open app" to "start writing" is one keystroke — while a full library dashboard handles subjects, favorites, archives and search.
+A sticky-note-first note-taking desktop app for students, built with Electron, React, TypeScript, TipTap and SQLite. Nock opens into a compact, always-on-top sticky workspace so the journey from "open app" to "start writing" is one keystroke — while a full library dashboard handles subjects, favorites, archives and search.
+
+## Download
+
+Nock for Windows (10/11, 64-bit) — no Node.js, Python or other tools required.
+
+- **`Nock-Setup-1.0.0.exe`** — installer (recommended)
+- **`Nock-1.0.0-portable.exe`** — no-install portable build
+
+Grab the latest release from the [GitHub Releases](https://github.com/Ism-ail-code/Dockly/releases) page.
+
+> Not code-signed — if SmartScreen warns, click **More info → Run anyway**.
 
 ## Features
 
@@ -8,9 +19,9 @@ A sticky-note-first note-taking desktop app for students, built with Electron, R
 - **Library dashboard** — subjects, all notes, favorites, archive and study settings in a secondary management window
 - **Rich text editor** — headings, lists, checklists, tables, code blocks, quotes, images and markdown-style shortcuts (TipTap)
 - **Screenshot capture** — press Win + Shift + S anywhere; the snip lands directly in the active note (per-window capture modes)
-- **Auto Capture Copied Text** — Ctrl + C in any other app appends the copied text into the active note, formatted with lists intact; copies made inside Dockly are never re-captured
+- **Auto Capture Copied Text** — Ctrl + C in any other app appends the copied text into the active note (on by default), formatted with lists intact; copies made inside Nock are never re-captured
 - **Continuous autosave** — every keystroke is persisted locally via SQLite with version history
-- **Customization** — themes, accent colors, compact mode, animations, dock transparency and tooltips
+- **Customization** — themes, accent colors, compact mode, animations, dock transparency (frosted or clear glass) and tooltips
 - **Fully offline** — all data stays on your PC
 
 ## Development

@@ -9,7 +9,7 @@ export function registerGlobalHotkeys(): void {
       else showDock();
     });
   } catch (e) {
-    console.log('[dockly] global hotkey failed:', e);
+    console.log('[nock] global hotkey failed:', e);
   }
 }
 

@@ -18,7 +18,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const electronExe = path.join(root, 'node_modules', 'electron', 'dist', process.platform === 'win32' ? 'electron.exe' : 'electron');
-const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'dockly-cliptest-'));
+const userData = fs.mkdtempSync(path.join(os.tmpdir(), 'nock-cliptest-'));
 
 function run(role) {
   return new Promise((resolve) => {
@@ -26,9 +26,9 @@ function run(role) {
       cwd: root,
       env: {
         ...process.env,
-        DOCKLY_CLIP_TEST: '1',
-        DOCKLY_CLIP_ROLE: role,
-        DOCKLY_CLIP_USER_DATA: userData,
+        NOCK_CLIP_TEST: '1',
+        NOCK_CLIP_ROLE: role,
+        NOCK_CLIP_USER_DATA: userData,
       },
       stdio: ['ignore', 'pipe', 'inherit'],
     });

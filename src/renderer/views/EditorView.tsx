@@ -12,7 +12,6 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
   Archive,
@@ -49,6 +48,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '@/app/store';
 import { BackButton, ConfirmDialog, Dropdown, SubjectIcon, timeAgo, useToast } from '@/components/ui';
+import { ResizableImage } from '@/lib/resizableImage';
 import type { Note } from '@shared/types';
 import { textToHtml } from '@/lib/clipboardText';
 
@@ -78,6 +78,7 @@ const TEXT_COLORS = [
 
 export function EditorView() {
   const noteId = useApp((s) => s.currentNoteId);
+  const storeNote = useApp((s) => s.notes.find((n) => n.id === s.currentNoteId));
   const subjects = useApp((s) => s.subjects);
   const navFrom = useApp((s) => s.navFrom);
   const goBack = useApp((s) => s.goBack);
@@ -113,7 +114,7 @@ export function EditorView() {
   const subject = subjects.find((s) => s.id === note?.subjectId);
 
   const load = useCallback(async (id: string) => {
-    const n = await window.dockly.notes.get(id).catch(() => null);
+    const n = await window.nock.notes.get(id).catch(() => null);
     if (!n) {
       // The note no longer exists — never leave the user on a stuck screen.
       goBack();
@@ -144,7 +145,7 @@ export function EditorView() {
         TableRow,
         TableHeader,
         TableCell,
-        Image.configure({ inline: false, allowBase64: true }),
+        ResizableImage.configure({ inline: false, allowBase64: true }),
         Placeholder.configure({
           placeholder: 'Start writing… or press Win + Shift + S to drop a screenshot here',
         }),
@@ -162,7 +163,7 @@ export function EditorView() {
         handleDOMEvents: {
           click: (_view, e) => {
             const img = (e.target as HTMLElement).closest?.('img');
-            if (img && img.src.startsWith('dockly-shot://')) {
+            if (img && img.src.startsWith('nock-shot://')) {
               const fileName = fileNameFromSrc(img.src);
               if (fileName) setAnnotationOpen(true, fileName);
             }
@@ -177,7 +178,7 @@ export function EditorView() {
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
           if (!noteId) return;
-          void window.dockly.notes.contentSave(noteId, editor.getJSON() as unknown as string);
+          void window.nock.notes.contentSave(noteId, editor.getJSON() as unknown as string);
           setDirty(false);
           setSaveState('saved');
           setTimeout(() => setSaveState('idle'), 1800);
@@ -245,8 +246,8 @@ export function EditorView() {
       const dataUrl = pendingShot.dataUrl;
       setPendingShot(null);
       const base64 = dataUrl.split(',')[1];
-      const { fileName } = await window.dockly.screenshots.save(noteId, base64);
-      const node = { type: 'image', attrs: { src: `dockly-shot://f/${fileName}` } };
+      const { fileName } = await window.nock.screenshots.save(noteId, base64);
+      const node = { type: 'image', attrs: { src: `nock-shot://f/${fileName}` } };
       const pos = editor.state.doc.content.size;
       editor.chain().focus().insertContentAt(pos, node).run();
       toast.success('Screenshot inserted');
@@ -264,10 +265,16 @@ export function EditorView() {
     const html = textToHtml(text);
     if (!html) return;
     if (editor.isFocused) {
+      // The user is typing here — insert at the caret and keep focus.
       editor.chain().focus().insertContent(html, { parseOptions: { preserveWhitespace: 'full' } }).run();
     } else {
+      // The user is working in another app — append without stealing focus
+      // (same rationale as the dock handler), and scroll to the insertion.
       const pos = editor.state.doc.content.size;
-      editor.chain().focus().insertContentAt(pos, html, { parseOptions: { preserveWhitespace: 'full' } }).run();
+      editor.chain()
+        .insertContentAt(pos, html, { parseOptions: { preserveWhitespace: 'full' } })
+        .scrollIntoView()
+        .run();
     }
     toast.success('Text captured ✓');
     void persistSoon();
@@ -276,7 +283,7 @@ export function EditorView() {
 
   const persistSoon = useCallback(() => {
     if (editor && noteId) {
-      void window.dockly.notes.contentSave(noteId, editor.getJSON() as unknown as string);
+      void window.nock.notes.contentSave(noteId, editor.getJSON() as unknown as string);
     }
   }, [editor, noteId]);
 
@@ -285,7 +292,7 @@ export function EditorView() {
   useEffect(() => {
     return () => {
       if (editor && noteId) {
-        void window.dockly.notes.contentSave(noteId, editor.getJSON() as unknown as string);
+        void window.nock.notes.contentSave(noteId, editor.getJSON() as unknown as string);
       }
     };
   }, [editor, noteId]);
@@ -317,7 +324,7 @@ export function EditorView() {
   const commitTitle = (t: string) => {
     setTitle(t);
     if (noteId && t.trim() !== note?.title) {
-      void window.dockly.notes.updateMeta(noteId, { title: t });
+      void window.nock.notes.updateMeta(noteId, { title: t });
       void refreshNotes();
     }
   };
@@ -325,7 +332,7 @@ export function EditorView() {
   const commitTags = async (next: string[]) => {
     setTags(next);
     if (noteId) {
-      await window.dockly.notes.updateMeta(noteId, { tags: next });
+      await window.nock.notes.updateMeta(noteId, { tags: next });
       await refreshTags();
     }
   };
@@ -339,20 +346,22 @@ export function EditorView() {
 
   const favorite = async () => {
     if (!noteId) return;
-    await window.dockly.notes.setFavorite(noteId, !note?.isFavorite);
+    const next = !note?.isFavorite;
+    await window.nock.notes.setFavorite(noteId, next);
+    if (note) setNote({ ...note, isFavorite: next });
     await Promise.all([refreshNotes(), refreshFavorites()]);
   };
 
   const duplicate = async () => {
     if (!noteId) return;
-    await window.dockly.notes.duplicate(noteId);
+    await window.nock.notes.duplicate(noteId);
     toast.success('Note duplicated');
     await Promise.all([refreshNotes(), refreshSubjects(), refreshRecents()]);
   };
 
   const archive = async () => {
     if (!noteId) return;
-    await window.dockly.notes.archive(noteId, true);
+    await window.nock.notes.archive(noteId, true);
     toast.success('Note archived');
     goBack();
     await Promise.all([refreshNotes(), refreshFavorites(), refreshRecents(), refreshSubjects()]);
@@ -362,7 +371,7 @@ export function EditorView() {
     if (!noteId) return;
     setConfirmDelete(false);
     const id = noteId;
-    await window.dockly.notes.delete(id);
+    await window.nock.notes.delete(id);
     useApp.getState().deleteNoteLocal(id);
     toast.success('Note deleted');
     goBack();
@@ -371,13 +380,13 @@ export function EditorView() {
 
   const dock = () => {
     if (!noteId) return;
-    void window.dockly.dock.open(noteId);
+    void window.nock.dock.open(noteId);
     toast.info('Note docked to the edge of your screen');
   };
 
   const moveTo = async (subjectId: string) => {
     if (!noteId || !note || subjectId === note.subjectId) return;
-    await window.dockly.notes.updateMeta(noteId, { subjectId: subjectId as never });
+    await window.nock.notes.updateMeta(noteId, { subjectId: subjectId as never });
     setMoveOpen(false);
     toast.success('Note moved');
     await Promise.all([refreshNotes(), refreshSubjects()]);
@@ -437,8 +446,8 @@ export function EditorView() {
               Save
             </button>
           )}
-          <button className={`btn btn-icon btn-ghost${note.isFavorite ? ' star-on' : ''}`} onClick={favorite} data-tooltip={note.isFavorite ? 'Remove favorite' : 'Add to favorites'} data-tooltip-side="bottom">
-            <StarIcon filled={note.isFavorite} />
+          <button className={`btn btn-icon btn-ghost${(storeNote?.isFavorite ?? note?.isFavorite) ? ' star-on' : ''}`} onClick={favorite} data-tooltip={(storeNote?.isFavorite ?? note?.isFavorite) ? 'Remove favorite' : 'Add to favorites'} data-tooltip-side="bottom">
+            <StarIcon filled={storeNote?.isFavorite ?? note?.isFavorite} />
           </button>
           <button className="btn btn-icon btn-ghost" onClick={() => setVersionOpen(true)} data-tooltip="Version history" data-tooltip-side="bottom">
             <FileClock />

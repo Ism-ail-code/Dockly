@@ -1,4 +1,4 @@
-# Dockly clipboard-change watcher (fallback when the koffi FFI module cannot be used).
+# Nock clipboard-change watcher (fallback when the koffi FFI module cannot be used).
 #
 # Event-driven: hosts a hidden WinForms form that calls AddClipboardFormatListener
 # (WM_CLIPBOARDUPDATE) and prints a single 'CHANGE' line to stdout on every
@@ -10,7 +10,7 @@ Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
-public sealed class DocklyClipWatcher : Form {
+public sealed class NockClipWatcher : Form {
     [DllImport("user32.dll")]
     private static extern bool AddClipboardFormatListener(IntPtr hwnd);
     [DllImport("user32.dll")]
@@ -34,7 +34,7 @@ public sealed class DocklyClipWatcher : Form {
 }
 '@ -ReferencedAssemblies System.Windows.Forms
 
-$watcher = New-Object DocklyClipWatcher
+$watcher = New-Object NockClipWatcher
 $script:changed = {
     [Console]::Out.WriteLine('CHANGE')
     [Console]::Out.Flush()

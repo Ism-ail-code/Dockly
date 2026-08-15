@@ -31,7 +31,7 @@ export function SearchOverlay() {
       return;
     }
     const t = setTimeout(async () => {
-      const res = await window.dockly.search(query.trim(), 'all');
+      const res = await window.nock.search(query.trim(), 'all');
       setResults(res);
       setActive(0);
     }, 120);

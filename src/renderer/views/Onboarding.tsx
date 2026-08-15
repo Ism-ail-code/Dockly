@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Camera, Check, Dock, FileText, NotebookPen, ScanSearch, Sparkles, X } from 'lucide-react';
 import { useApp } from '@/app/store';
-import { DocklyLogo } from '@/components/TopBar';
+import { NockLogo } from '@/components/TopBar';
 import { SubjectIcon } from '@/components/ui';
 import { DEFAULT_SUBJECTS } from '@shared/defaults';
 import type { AccentColor } from '@shared/types';
@@ -15,7 +15,7 @@ const STEPS = [
   {
     icon: Camera,
     title: 'Screenshots, instantly in your notes',
-    sub: 'Press Win + Shift + S and Dockly places the snip exactly where your cursor is. No dialogs, no clicks.',
+    sub: 'Press Win + Shift + S and Nock places the snip exactly where your cursor is. No dialogs, no clicks.',
   },
   {
     icon: Dock,
@@ -51,7 +51,7 @@ export function Onboarding() {  const boot = useApp((s) => s.boot);
     let order = 0;
     for (const s of DEFAULT_SUBJECTS) {
       if (!picked.has(s.name)) continue;
-      await window.dockly.subjects.create({ name: s.name, icon: s.icon, color: s.color as AccentColor });
+      await window.nock.subjects.create({ name: s.name, icon: s.icon, color: s.color as AccentColor });
       order++;
     }
     await setSetting('onboarded', true);
@@ -59,15 +59,15 @@ export function Onboarding() {  const boot = useApp((s) => s.boot);
     await boot();
     // Sticky-note-first: after setup, open the docked sticky workspace and tuck
     // the library away — the dock's Dashboard button brings it back.
-    void window.dockly.dock.open();
-    void window.dockly.window.hide();
+    void window.nock.dock.open();
+    void window.nock.window.hide();
   };
 
   return (
     <div className="onboarding view-enter">
       <div className="onboarding-card">
         <div className="onboarding-logo">
-          <DocklyLogo size={44} />
+          <NockLogo size={44} />
         </div>
 
         {step < 3 ? (

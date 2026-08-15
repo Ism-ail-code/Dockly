@@ -9,7 +9,7 @@ let db: DatabaseSync;
 let screenshotsDir: string;
 
 export function initDb(userDataDir: string): void {
-  const dbPath = path.join(userDataDir, 'dockly.db');
+  const dbPath = path.join(userDataDir, 'nock.db');
   screenshotsDir = path.join(userDataDir, 'screenshots');
   fs.mkdirSync(screenshotsDir, { recursive: true });
   db = new DatabaseSync(dbPath);
@@ -231,7 +231,7 @@ export function createNote(subjectId: string, title = ''): Note {
 
 export function updateNoteMeta(
   id: string,
-  data: Partial<Pick<Note, 'title' | 'tags' | 'isFavorite' | 'isArchived'>>,
+  data: Partial<Pick<Note, 'title' | 'tags' | 'isFavorite' | 'isArchived' | 'subjectId'>>,
 ): Note | null {
   const existing = getNote(id);
   if (!existing) return null;
@@ -242,6 +242,7 @@ export function updateNoteMeta(
   if (data.tags !== undefined) { sets.push('tags = ?'); params.push(JSON.stringify(data.tags)); }
   if (data.isFavorite !== undefined) { sets.push('is_favorite = ?'); params.push(data.isFavorite ? 1 : 0); }
   if (data.isArchived !== undefined) { sets.push('is_archived = ?'); params.push(data.isArchived ? 1 : 0); }
+  if (data.subjectId !== undefined) { sets.push('subject_id = ?'); params.push(data.subjectId); }
   if (sets.length === 0) return existing;
   sets.push('updated_at = ?');
   params.push(now, id);

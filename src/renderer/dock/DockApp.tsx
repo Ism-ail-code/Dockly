@@ -3,29 +3,43 @@ import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent a
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
+import Link from '@tiptap/extension-link';
+import TextStyle from '@tiptap/extension-text-style';
+import Color from '@tiptap/extension-color';
+import Highlight from '@tiptap/extension-highlight';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
-import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
 import {
   ArrowUpRight,
+  Bold,
   Check,
+  CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  Code,
   Eye,
   GripHorizontal,
+  Heading1,
+  Heading2,
+  Italic,
   LayoutDashboard,
+  List,
+  ListOrdered,
   Lock,
   LockOpen,
   Minus,
+  MoreHorizontal,
   Pin,
   PinOff,
   Plus,
+  Quote,
   Search,
   Settings as SettingsIcon,
   Star,
@@ -34,8 +48,9 @@ import {
 import type { DockConfig, Note, Settings, Subject } from '@shared/types';
 import { DEFAULT_SETTINGS } from '@shared/defaults';
 import { useApp } from '@/app/store';
-import { DocklyLogo } from '@/components/TopBar';
+import { NockLogo } from '@/components/TopBar';
 import { SubjectIcon, timeAgo } from '@/components/ui';
+import { ResizableImage } from '@/lib/resizableImage';
 import { textToHtml } from '@/lib/clipboardText';
 
 interface DockNote {
@@ -69,9 +84,11 @@ export function DockApp() {
   const [results, setResults] = useState<DockNote[]>([]);
   const [searching, setSearching] = useState(false);
   const [subjectMenu, setSubjectMenu] = useState(false);
+  const [moreMenu, setMoreMenu] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   const [dragActive, setDragActive] = useState(false);
   const [capturedFlash, setCapturedFlash] = useState<string | null>(null);
+  const [recentsCompact, setRecentsCompact] = useState(true);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recentsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -93,15 +110,15 @@ export function DockApp() {
   // ---------- boot: config, settings, subjects, recents ----------
   useEffect(() => {
     const offs = [
-      window.dockly.on('dock:state', (d) => {
+      window.nock.on('dock:state', (d) => {
         setCfg((prev) => ({ ...prev, ...(d as Partial<DockConfig>) }));
       }),
-      window.dockly.on('sync:settings', (s) => {
+      window.nock.on('sync:settings', (s) => {
         const next = s as Settings;
         setSettings(next);
         useApp.getState().applySettings(next);
       }),
-      window.dockly.on('sync:active-note', (p) => {
+      window.nock.on('sync:active-note', (p) => {
         const payload = p as { noteId: string | null; from: string };
         if (payload.from === 'dock') return;
         if (!payload.noteId) {
@@ -114,25 +131,25 @@ export function DockApp() {
       }),
     ];
     void (async () => {
-      const [d, s] = await Promise.all([window.dockly.dock.getState(), window.dockly.settings.get()]);
+      const [d, s] = await Promise.all([window.nock.dock.getState(), window.nock.settings.get()]);
       setCfg((prev) => ({ ...prev, ...d }));
       setSettings(s);
       useApp.getState().applySettings(s);
     })();
     void refreshSubjects();
     void refreshRecents();
-    void window.dockly.clipboard.setCaptureMode('off');
+    void window.nock.clipboard.setCaptureMode('off');
     return () => offs.forEach((off) => off());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const refreshSubjects = useCallback(async () => {
-    setSubjects(await window.dockly.subjects.list());
+    setSubjects(await window.nock.subjects.list());
   }, []);
 
   const refreshRecents = useCallback(async () => {
-    const all = await window.dockly.notes.list(undefined, false);
-    const subjectById = new Map((await window.dockly.subjects.list()).map((s) => [s.id, s]));
+    const all = await window.nock.notes.list(undefined, false);
+    const subjectById = new Map((await window.nock.subjects.list()).map((s) => [s.id, s]));
     const rows = all
       .sort((a, b) => b.updatedAt - a.updatedAt)
       .slice(0, 8)
@@ -146,12 +163,12 @@ export function DockApp() {
       setSubjectNoteCount(null);
       return;
     }
-    void window.dockly.notes.list(effectiveSubjectId).then((n) => setSubjectNoteCount(n.length));
+    void window.nock.notes.list(effectiveSubjectId).then((n) => setSubjectNoteCount(n.length));
   }, [effectiveSubjectId]);
 
   // ---------- capture mode: the dock consumes screenshots while a note is open ----------
   useEffect(() => {
-    void window.dockly.clipboard.setCaptureMode(note ? 'editor' : 'off');
+    void window.nock.clipboard.setCaptureMode(note ? 'editor' : 'off');
   }, [note?.id]);
 
   // ---------- editor ----------
@@ -160,13 +177,20 @@ export function DockApp() {
       extensions: [
         StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
         Underline,
+        Link.configure({ openOnClick: false, autolink: settings.markdownShortcuts }),
+        // Schema parity with the library editor: notes created there can carry
+        // highlight / text-color / link marks, and the dock must parse them
+        // instead of rejecting the whole document.
+        TextStyle,
+        Color,
+        Highlight.configure({ multicolor: true }),
         TaskList,
         TaskItem,
         Table.configure({ resizable: false }),
         TableRow,
         TableHeader,
         TableCell,
-        Image.configure({ inline: false }),
+        ResizableImage.configure({ inline: false }),
         Placeholder.configure({ placeholder: 'Start writing…' }),
       ],
       // "Markdown shortcuts" preference: typing shortcuts (#, -, 1., **) off when disabled.
@@ -187,7 +211,7 @@ export function DockApp() {
         setSaveState('saving');
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
-          void window.dockly.notes.contentSave(id, snapshot as unknown as string);
+          void window.nock.notes.contentSave(id, snapshot as unknown as string);
           setSaveState('saved');
           setTimeout(() => setSaveState('idle'), 1600);
           if (recentsTimer.current) clearTimeout(recentsTimer.current);
@@ -208,7 +232,7 @@ export function DockApp() {
     const onBlur = () => {
       const id = activeNoteId.current;
       if (!id || !editor) return;
-      void window.dockly.notes.contentSave(id, editor.getJSON() as unknown as string);
+      void window.nock.notes.contentSave(id, editor.getJSON() as unknown as string);
     };
     window.addEventListener('blur', onBlur);
     return () => window.removeEventListener('blur', onBlur);
@@ -216,7 +240,7 @@ export function DockApp() {
 
   // apply remote content (from main window)
   useEffect(() => {
-    const off = window.dockly.on('sync:note-content', (c) => {
+    const off = window.nock.on('sync:note-content', (c) => {
       const payload = c as { noteId: string; content: string; from: string };
       if (payload.from === 'dock') return;
       if (payload.noteId !== activeNoteId.current) return;
@@ -247,15 +271,15 @@ export function DockApp() {
 
   // Insert any screenshot captured while the dock is the focused window.
   useEffect(() => {
-    const off = window.dockly.on('clipboard:image', (p) => {
+    const off = window.nock.on('clipboard:image', (p) => {
       const payload = p as { png: string; width: number; height: number; capturedAt: number };
       const id = activeNoteId.current;
       if (!id) return;
       if (!settingsRef.current.autoInsertScreenshots) return;
       void (async () => {
         try {
-          const { fileName } = await window.dockly.screenshots.save(id, payload.png);
-          const src = 'dockly-shot://f/' + fileName;
+          const { fileName } = await window.nock.screenshots.save(id, payload.png);
+          const src = 'nock-shot://f/' + fileName;
           const pos = editorRef.current?.state.doc.content.size ?? 0;
           editorRef.current?.chain().focus().insertContentAt(pos, { type: 'image', attrs: { src } }).run();
         } catch {
@@ -266,10 +290,10 @@ export function DockApp() {
     return off;
   }, [editor]);
 
-  // Tell the main process when the user copies text INSIDE Dockly, so it can
+  // Tell the main process when the user copies text INSIDE Nock, so it can
   // recognize and ignore self-copies (no feedback loops into the same note).
   useEffect(() => {
-    const onCopy = () => void window.dockly.clipboard.markSelfCopy();
+    const onCopy = () => void window.nock.clipboard.markSelfCopy();
     document.addEventListener('copy', onCopy);
     return () => document.removeEventListener('copy', onCopy);
   }, []);
@@ -278,7 +302,7 @@ export function DockApp() {
   // into the active note. Inserts at the current cursor when the editor has
   // focus, otherwise appends at the end. Saves immediately.
   useEffect(() => {
-    const off = window.dockly.on('clipboard:text', (p) => {
+    const off = window.nock.on('clipboard:text', (p) => {
       const payload = p as { text: string; noteId: string | null; capturedAt: number };
       const id = activeNoteId.current;
       if (!id) return;
@@ -291,15 +315,21 @@ export function DockApp() {
       if (!ed) return;
 
       const focused = ed.isFocused;
-      const chain = ed.chain();
       if (focused) {
-        chain.focus().insertContent(html, { parseOptions: { preserveWhitespace: 'full' } });
+        // The user is already typing here — insert at the caret and keep focus.
+        ed.chain().focus().insertContent(html, { parseOptions: { preserveWhitespace: 'full' } }).run();
       } else {
+        // The user is working in another app — append WITHOUT stealing focus
+        // (focusing would yank the OS focus out of their current app and make
+        // the next copy look like a self-copy). Scroll to the insertion so the
+        // captured text is actually visible.
         const pos = ed.state.doc.content.size;
-        chain.focus().insertContentAt(pos, html, { parseOptions: { preserveWhitespace: 'full' } });
+        ed.chain()
+          .insertContentAt(pos, html, { parseOptions: { preserveWhitespace: 'full' } })
+          .scrollIntoView()
+          .run();
       }
-      chain.run();
-      void window.dockly.notes.contentSave(id, ed.getJSON() as unknown as string);
+      void window.nock.notes.contentSave(id, ed.getJSON() as unknown as string);
       if (recentsTimer.current) clearTimeout(recentsTimer.current);
       recentsTimer.current = setTimeout(() => void refreshRecents(), 1500);
 
@@ -317,7 +347,7 @@ export function DockApp() {
   const loadNote = useCallback(
     async (id: string) => {
       const seq = ++loadSeq.current;
-      const n = await window.dockly.notes.get(id);
+      const n = await window.nock.notes.get(id);
       if (seq !== loadSeq.current || !n) return;
       loadedNoteId.current = n.id;
       activeNoteId.current = n.id;
@@ -355,17 +385,17 @@ export function DockApp() {
   const newNote = () => {
     const target = effectiveSubjectId;
     if (!target) {
-      void window.dockly.window.openMain('dashboard');
+      void window.nock.window.openMain('dashboard');
       return;
     }
-    void window.dockly.notes.create(target, '');
+    void window.nock.notes.create(target, '');
     void refreshRecents();
   };
 
   const commitTitle = (t: string) => {
     setTitle(t);
     if (note && t.trim() !== note.title) {
-      void window.dockly.notes.updateMeta(note.id, { title: t });
+      void window.nock.notes.updateMeta(note.id, { title: t });
       void refreshRecents();
     }
   };
@@ -373,18 +403,22 @@ export function DockApp() {
   const toggleFavorite = async (id: string) => {
     const n = recents.find((r) => r.note.id === id)?.note;
     if (!n) return;
-    await window.dockly.notes.setFavorite(id, !n.isFavorite);
+    const next = !n.isFavorite;
+    await window.nock.notes.setFavorite(id, next);
+    // Refresh the open note card immediately so its star + tooltip flip
+    // without waiting for a full reload.
+    setNote((prev) => (prev && prev.id === id ? { ...prev, isFavorite: next } : prev));
     void refreshRecents();
   };
 
   const openMain = (view: string) => {
-    void window.dockly.window.openMain(view);
+    void window.nock.window.openMain(view);
   };
 
   const pickSubject = (id: string) => {
     setCurSubjectId(id);
     setSubjectMenu(false);
-    void window.dockly.settings.set('lastSubjectId', id);
+    void window.nock.settings.set('lastSubjectId', id);
   };
 
   // ---------- search ----------
@@ -398,7 +432,7 @@ export function DockApp() {
     }
     searchTimer.current = setTimeout(async () => {
       try {
-        const res = await window.dockly.search(q, 'all');
+        const res = await window.nock.search(q, 'all');
         const subjectById = new Map(subjects.map((s) => [s.id, s]));
         const rows: DockNote[] = [];
         for (const r of res) for (const n of r.notes) rows.push({ note: n, subject: subjectById.get(n.subjectId) ?? r.subject });
@@ -423,10 +457,10 @@ export function DockApp() {
     }
   };
 
-  const toggleCollapse = () => void window.dockly.dock.toggleCollapse();
-  const toggleLock = () => void window.dockly.dock.setLocked(!cfg.locked);
-  const toggleFocus = () => void window.dockly.dock.toggleFocus();
-  const togglePin = () => void window.dockly.dock.setOnTop(!settings.dockOnTop);
+  const toggleCollapse = () => void window.nock.dock.toggleCollapse();
+  const toggleLock = () => void window.nock.dock.setLocked(!cfg.locked);
+  const toggleFocus = () => void window.nock.dock.toggleFocus();
+  const togglePin = () => void window.nock.dock.setOnTop(!settings.dockOnTop);
 
   // resize handle drag logic — unified for every edge/corner
   type ResizeKind = 'inner' | 'top' | 'bottom' | 'top-inner' | 'bottom-inner';
@@ -448,10 +482,10 @@ export function DockApp() {
         if (kind === 'bottom' || kind === 'bottom-inner') nextH = Math.round(startH + dy);
         else if (kind === 'top' || kind === 'top-inner') nextH = Math.round(startH - dy);
         if (kind === 'inner') {
-          void window.dockly.dock.setWidth(nextW);
+          void window.nock.dock.setWidth(nextW);
         } else {
           const fixed: 'top' | 'bottom' = kind === 'top' || kind === 'top-inner' ? 'bottom' : 'top';
-          void window.dockly.dock.setSize(nextW, nextH, fixed);
+          void window.nock.dock.setSize(nextW, nextH, fixed);
         }
       };
       const onUp = () => {
@@ -487,7 +521,7 @@ export function DockApp() {
             top of this button and swallowed its clicks (-webkit-app-region:
             drag hit-testing), making the dock impossible to expand again. */}
         <button className="dock-rail-logo" onClick={toggleCollapse} data-tooltip="Expand dock" aria-label="Expand dock">
-          <DocklyLogo size={22} />
+          <NockLogo size={22} />
         </button>
       </div>
     );
@@ -497,6 +531,7 @@ export function DockApp() {
     <div
       className={`dock dock-expanded side-${cfg.side}${cfg.focusMode ? ' focus' : ''}${narrow ? ' narrow' : ''}${short ? ' short' : ''}${mini ? ' mini' : ''}`}
       data-translucent={settings.dockTransparencyEnabled ? 'on' : 'off'}
+      data-glass={settings.dockGlassStyle}
       style={{ '--dock-alpha': String(settings.dockTransparency) } as CSSProperties}
     >
       <div className="dock-panel">
@@ -504,8 +539,8 @@ export function DockApp() {
         {/* header */}
         <div className="dock-head" style={!cfg.locked ? ({ WebkitAppRegion: 'drag' } as CSSProperties) : undefined}>
           <div className="dock-head-left">
-            <DocklyLogo size={16} />
-            <span className="dock-brand">Dockly</span>
+            <NockLogo size={16} />
+            <span className="dock-brand">Nock</span>
           </div>
           <div className="dock-head-actions" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
             {!cfg.focusMode && (
@@ -520,7 +555,7 @@ export function DockApp() {
               </button>
             )}
             {!cfg.focusMode && (
-              <button className="dock-btn" onClick={() => openMain('settings')} data-tooltip="Customize Dockly — themes, transparency, subjects and shortcuts">
+              <button className="dock-btn" onClick={() => openMain('settings')} data-tooltip="Customize Nock — themes, transparency, subjects and shortcuts">
                 <SettingsIcon size={13} />
               </button>
             )}
@@ -535,7 +570,7 @@ export function DockApp() {
             <button className="dock-btn" onClick={toggleCollapse} data-tooltip="Collapse">
               {innerEdge ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
             </button>
-            <button className="dock-btn" onClick={() => void window.dockly.dock.close()} data-tooltip="Close Dockly">
+            <button className="dock-btn" onClick={() => void window.nock.dock.close()} data-tooltip="Close Nock">
               <X size={12} />
             </button>
           </div>
@@ -632,11 +667,78 @@ export function DockApp() {
                     <Star size={12} fill={note.isFavorite ? 'currentColor' : 'none'} />
                   </button>
                 </div>
+                {settings.richText && (
+                  <div className="dock-editor-toolbar">
+                    <button
+                      className={`dock-ttb${editor?.isActive('heading', { level: 1 }) ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
+                      data-tooltip="Heading 1"
+                    >
+                      <Heading1 size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('heading', { level: 2 }) ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
+                      data-tooltip="Heading 2"
+                    >
+                      <Heading2 size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('bold') ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleBold().run()}
+                      data-tooltip="Bold"
+                    >
+                      <Bold size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('italic') ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleItalic().run()}
+                      data-tooltip="Italic"
+                    >
+                      <Italic size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('bulletList') ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleBulletList().run()}
+                      data-tooltip="Bulleted list"
+                    >
+                      <List size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('orderedList') ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleOrderedList().run()}
+                      data-tooltip="Numbered list"
+                    >
+                      <ListOrdered size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('taskList') ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleTaskList().run()}
+                      data-tooltip="Checklist"
+                    >
+                      <CheckSquare size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('blockquote') ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleBlockquote().run()}
+                      data-tooltip="Quote"
+                    >
+                      <Quote size={13} />
+                    </button>
+                    <button
+                      className={`dock-ttb${editor?.isActive('codeBlock') ? ' active' : ''}`}
+                      onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
+                      data-tooltip="Code block"
+                    >
+                      <Code size={13} />
+                    </button>
+                  </div>
+                )}
                 <EditorContent className="dock-editor" editor={editor} />
               </>
             ) : (
               <div className="dock-note-empty">
-                <button className="dock-note-cta" onClick={newNote}>
+                <button className="dock-note-cta" onClick={newNote} data-tooltip="Create a new sticky note">
                   <Plus size={16} />
                   Start writing
                 </button>
@@ -647,41 +749,55 @@ export function DockApp() {
 
           {/* recent notes */}
           {!cfg.focusMode && (
-            <div className="dock-recents">
-              <div className="dock-section-label">Recent</div>
-              {recents.length === 0 && <div className="dock-recents-empty">No notes yet — hit “New” to start writing</div>}
-              {recents.map((r) => (
+            <div className={`dock-recents${recentsCompact ? ' compact' : ''}`}>
+              <div className="dock-section-head">
+                <span className="dock-section-label">Recent</span>
                 <button
-                  key={r.note.id}
-                  className={`dock-recent${r.note.id === note?.id ? ' active' : ''}`}
-                  onClick={() => void loadNote(r.note.id)}
-                  aria-pressed={r.note.id === note?.id}
+                  className={`dock-btn dock-recents-toggle${recentsCompact ? ' on' : ''}`}
+                  onClick={() => setRecentsCompact((v) => !v)}
+                  data-tooltip={recentsCompact ? 'Expand recent notes' : 'Compact recent notes'}
+                  aria-label={recentsCompact ? 'Expand recent notes' : 'Compact recent notes'}
                 >
-                  <span className="dock-subject-dot" />
-                  <span className="dock-recent-main">
-                    <span className="dock-recent-title">{r.note.title || 'Untitled'}</span>
-                    <span className="dock-recent-preview">{r.note.preview}</span>
-                  </span>
-                  <span className="dock-recent-time">{timeAgo(r.note.updatedAt)}</span>
-                  <span
-                    className={`dock-recent-star${r.note.isFavorite ? ' on' : ''}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      void toggleFavorite(r.note.id);
-                    }}
-                    role="button"
-                    data-tooltip={r.note.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                    data-tooltip-delay="300"
-                    aria-label={r.note.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                  >
-                    <Star size={11} fill={r.note.isFavorite ? 'currentColor' : 'none'} />
-                  </span>
+                  {recentsCompact ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                 </button>
-              ))}
-              <button className="dock-open-library" onClick={() => openMain('dashboard')}>
-                Open library
-                <ArrowUpRight size={12} />
-              </button>
+              </div>
+              {!recentsCompact && (
+                <>
+                  {recents.length === 0 && <div className="dock-recents-empty">No notes yet — hit “New” to start writing</div>}
+                  {recents.map((r) => (
+                    <button
+                      key={r.note.id}
+                      className={`dock-recent${r.note.id === note?.id ? ' active' : ''}`}
+                      onClick={() => void loadNote(r.note.id)}
+                      aria-pressed={r.note.id === note?.id}
+                    >
+                      <span className="dock-subject-dot" />
+                      <span className="dock-recent-main">
+                        <span className="dock-recent-title">{r.note.title || 'Untitled'}</span>
+                        <span className="dock-recent-preview">{r.note.preview}</span>
+                      </span>
+                      <span className="dock-recent-time">{timeAgo(r.note.updatedAt)}</span>
+                      <span
+                        className={`dock-recent-star${r.note.isFavorite ? ' on' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          void toggleFavorite(r.note.id);
+                        }}
+                        role="button"
+                        data-tooltip={r.note.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                        data-tooltip-delay="300"
+                        aria-label={r.note.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Star size={11} fill={r.note.isFavorite ? 'currentColor' : 'none'} />
+                      </span>
+                    </button>
+                  ))}
+                  <button className="dock-open-library" onClick={() => openMain('dashboard')}>
+                    Open library
+                    <ArrowUpRight size={12} />
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -694,23 +810,47 @@ export function DockApp() {
               {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? 'Saved' : 'Autosave on'}
             </span>
             <span className="dock-capture-hint">{settings.autoInsertScreenshots ? 'Win+Shift+S → this note' : 'Screenshots off'}</span>
-            <span className="dock-foot-actions">
-              <button className="dock-btn" onClick={toggleLock} data-tooltip={cfg.locked ? 'Unlock position' : 'Lock position'}>
-                {cfg.locked ? <Lock size={11} /> : <LockOpen size={11} />}
+            <div className="dock-more-wrap">
+              <button
+                className={`dock-btn dock-more-btn${moreMenu ? ' on' : ''}`}
+                onClick={() => setMoreMenu((v) => !v)}
+                data-tooltip="More options"
+                aria-expanded={moreMenu}
+                aria-label="More options"
+              >
+                <MoreHorizontal size={11} />
               </button>
-              <button className="dock-btn" onClick={toggleFocus} data-tooltip="Focus mode">
-                <Eye size={11} />
-              </button>
-              <button className="dock-btn" onClick={() => void window.dockly.dock.minimize()} data-tooltip="Minimize">
-                <Minus size={11} />
-              </button>
-            </span>
-            {!cfg.locked && <span className="dock-hint">drag inner edge to resize</span>}
+              {moreMenu && (
+                <div className="dock-more-pop">
+                  <button
+                    className="dock-more-item"
+                    onClick={() => { setMoreMenu(false); toggleLock(); }}
+                    data-tooltip={cfg.locked ? 'Unlock position' : 'Lock position'}
+                  >
+                    {cfg.locked ? <LockOpen size={11} /> : <Lock size={11} />}
+                    {cfg.locked ? 'Unlock position' : 'Lock position'}
+                  </button>
+                  <button className="dock-more-item" onClick={() => { setMoreMenu(false); toggleFocus(); }} data-tooltip="Focus mode">
+                    <Eye size={11} />
+                    Focus mode
+                  </button>
+                  <button
+                    className="dock-more-item"
+                    onClick={() => { setMoreMenu(false); void window.nock.dock.minimize(); }}
+                    data-tooltip="Minimize"
+                  >
+                    <Minus size={11} />
+                    Minimize
+                  </button>
+                  {!cfg.locked && <div className="dock-more-hint">drag edges &amp; corners to resize</div>}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {/* resize handles: inner edge (width), top/bottom edges (height), corner squares (both) */}
-        {!cfg.locked && !dragActive && !cfg.focusMode && (
+        {!cfg.locked && !cfg.focusMode && (
           <>
             <div
               className={`dock-resize ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}

@@ -63,14 +63,14 @@ function buildCategories(onReset: () => void): Category[] {
         kind: 'toggle',
         key: 'launchOnStartup',
         title: 'Launch at startup',
-        desc: 'Open Dockly automatically when you sign in to Windows',
+        desc: 'Open Nock automatically when you sign in to Windows',
         keywords: 'startup boot autostart general',
       },
       {
         kind: 'toggle',
         key: 'sessionResume',
         title: 'Session resume',
-        desc: 'Reopen the last note you were working on when Dockly starts',
+        desc: 'Reopen the last note you were working on when Nock starts',
         keywords: 'resume reopen continue study last note',
       },
     ],
@@ -177,7 +177,7 @@ function buildCategories(onReset: () => void): Category[] {
         kind: 'toggle',
         key: 'dockAutoHide',
         title: 'Auto-hide',
-        desc: 'Tuck the dock away while Dockly is focused; show it when you switch away',
+        desc: 'Tuck the dock away while Nock is focused; show it when you switch away',
         keywords: 'dock autohide hide collapse sidebar peek',
       },
       {
@@ -241,6 +241,30 @@ function buildCategories(onReset: () => void): Category[] {
                 aria-label="Dock transparency"
               />
               <span className="settings-slider-value t-sub">{Math.round(s.dockTransparency * 100)}%</span>
+            </div>
+            <div className="dock-glass">
+              <button
+                className={`dock-glass-option${s.dockGlassStyle === 'frosted' ? ' active' : ''}`}
+                onClick={() => {
+                  void set('dockTransparencyEnabled', true);
+                  void set('dockGlassStyle', 'frosted');
+                }}
+                data-tooltip="Frosted: classic blurred glass — what's behind stays soft"
+                aria-pressed={s.dockGlassStyle === 'frosted'}
+              >
+                Frosted
+              </button>
+              <button
+                className={`dock-glass-option${s.dockGlassStyle === 'clear' ? ' active' : ''}`}
+                onClick={() => {
+                  void set('dockTransparencyEnabled', true);
+                  void set('dockGlassStyle', 'clear');
+                }}
+                data-tooltip="Clear: true see-through — read what's behind the dock (fixed ~35%)"
+                aria-pressed={s.dockGlassStyle === 'clear'}
+              >
+                Clear
+              </button>
             </div>
           </div>
         ),
@@ -427,20 +451,20 @@ export function SettingsView() {
     if (!name) return;
     const colors: AccentColor[] = ['indigo', 'violet', 'sky', 'teal', 'emerald', 'amber', 'orange', 'rose', 'pink'];
     const color = colors[subjects.length % colors.length];
-    await window.dockly.subjects.create({ name, icon: 'layers', color });
+    await window.nock.subjects.create({ name, icon: 'layers', color });
     setNewSubject('');
     await refreshSubjects();
   };
 
   const removeSubject = async (id: string) => {
-    await window.dockly.subjects.delete(id);
+    await window.nock.subjects.delete(id);
     setConfirm(null);
     await Promise.all([refreshSubjects(), refreshNotes()]);
   };
 
   const resetAll = async () => {
     setConfirm(null);
-    await window.dockly.settings.reset();
+    await window.nock.settings.reset();
     toast.success('All preferences reset to defaults');
   };
 
@@ -561,7 +585,7 @@ export function SettingsView() {
           </div>
           <div className="settings-row" style={{ border: 'none' }}>
             <div className="settings-label">
-              <div className="settings-name">Dockly v0.1</div>
+              <div className="settings-name">Nock v1.0</div>
               <div className="settings-desc">
                 Offline first — all data lives on this PC.
                 <br />

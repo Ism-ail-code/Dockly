@@ -15,14 +15,14 @@ export type CaptureMode = 'off' | 'editor' | 'awaiting';
  * Two independent captures can happen on a change:
  *
  *  1. Screenshots — only consumed while the user is actually working in a
- *     Dockly window (focused, visible, note/annotator open). If Dockly is
+ *     Nock window (focused, visible, note/annotator open). If Nock is
  *     not focused when the image lands, it is remembered and delivered the
- *     moment the user returns to Dockly (bounded window).
+ *     moment the user returns to Nock (bounded window).
  *
  *  2. Copied text (Ctrl + C) — captured while the user works in OTHER
  *     applications, as long as the dock (or the main editor) has an active
  *     note and the "Auto Capture Copied Text" setting is enabled. Copies made
- *     inside Dockly itself are recognized and ignored (no feedback loops).
+ *     inside Nock itself are recognized and ignored (no feedback loops).
  */
 
 const modes: Record<'main' | 'dock', CaptureMode> = { main: 'off', dock: 'off' };
@@ -31,7 +31,7 @@ let lastTextSig = '';
 let active = false;
 
 // ----- screenshot delivery state -----
-// When an image lands while no Dockly window is focused, we remember it and
+// When an image lands while no Nock window is focused, we remember it and
 // deliver once the user returns (or give up after a bounded time).
 let pendingImgSig = '';
 let pendingImgAt = 0;
@@ -39,8 +39,8 @@ let pendingImgTimer: NodeJS.Timeout | null = null;
 const PENDING_IMAGE_LIFETIME_MS = 60_000;
 
 // ----- self-copy guard -----
-// Renderers report DOM `copy` events that originate inside Dockly. Combined
-// with the focused-window check, this ensures Dockly never re-captures text
+// Renderers report DOM `copy` events that originate inside Nock. Combined
+// with the focused-window check, this ensures Nock never re-captures text
 // that it copied itself.
 let lastSelfCopyAt = 0;
 const SELF_COPY_WINDOW_MS = 1200;
@@ -63,7 +63,7 @@ export function setCaptureMode(mode: CaptureMode, source: 'main' | 'dock'): void
   modes[source] = mode;
 }
 
-/** The active, foreground Dockly window the user is working in — or null. */
+/** The active, foreground Nock window the user is working in — or null. */
 function activeForegroundWindow(): BrowserWindow | null {
   const main = getMainWindow();
   const dock = getDockWindow();
@@ -76,7 +76,7 @@ function activeForegroundWindow(): BrowserWindow | null {
   return null;
 }
 
-/** The mode of whichever Dockly window is focused and visible right now. */
+/** The mode of whichever Nock window is focused and visible right now. */
 export function getCaptureMode(): CaptureMode {
   const fg = activeForegroundWindow();
   if (!fg) return 'off';
@@ -91,7 +91,7 @@ export function isWatcherActive(): boolean {
   return active;
 }
 
-/** Mode of a specific Dockly window regardless of focus (used by the watcher). */
+/** Mode of a specific Nock window regardless of focus (used by the watcher). */
 function modeOf(target: BrowserWindow | null): CaptureMode {
   if (!target) return 'off';
   return target === getDockWindow() ? modes.dock : modes.main;
@@ -112,7 +112,7 @@ export function initClipboardListener(): void {
     console.log('[clipboard] no native clipboard notifier available — capture disabled');
   }
 
-  // If a screenshot is waiting for a focused Dockly window, deliver it the
+  // If a screenshot is waiting for a focused Nock window, deliver it the
   // moment the user returns — no polling involved. Windows may be created
   // after this call, so the hooks are re-attached on every change event too.
   ensureFocusHooks();
@@ -179,8 +179,8 @@ function handleImageCapture(): void {
     deliverScreenshot(fg, png, img);
     return;
   }
-  // Dockly is not focused right now (the user is in another app). Remember the
-  // image and deliver when they return to Dockly.
+  // Nock is not focused right now (the user is in another app). Remember the
+  // image and deliver when they return to Nock.
   pendingImgSig = sig;
   pendingImgAt = Date.now();
   if (pendingImgTimer) clearTimeout(pendingImgTimer);
@@ -230,7 +230,7 @@ function deliverScreenshot(target: BrowserWindow, png: Buffer, img: Electron.Nat
 
 // ----- copied text (Ctrl + C) -----
 
-/** Which Dockly window(s) should receive captured text right now. */
+/** Which Nock window(s) should receive captured text right now. */
 function textCaptureTargets(): BrowserWindow[] {
   const noteId = state.activeNoteId;
   if (!noteId) return [];
@@ -255,8 +255,8 @@ function textCaptureTargets(): BrowserWindow[] {
 }
 
 /**
- * True when the clipboard change almost certainly originated inside Dockly:
- * either a Dockly window holds focus, or a Dockly renderer reported a DOM
+ * True when the clipboard change almost certainly originated inside Nock:
+ * either a Nock window holds focus, or a Nock renderer reported a DOM
  * `copy` event moments ago. Such copies must never be captured again.
  */
 function isSelfCopy(): boolean {
@@ -292,13 +292,13 @@ function handleTextCapture(): void {
     noActiveNote: !state.activeNoteId,
     isDup: isDup && (state.settings?.ignoreDuplicateClipboard ?? true),
   };
-  if (process.env.DOCKLY_CLIP_TEST === '1') {
+  if (process.env.NOCK_CLIP_TEST === '1') {
     console.log('[clipboard] change text=', JSON.stringify(text.slice(0, 40)), 'guards=', JSON.stringify(guards));
   }
   if (guards.autoCaptureText || guards.isSelfCopy || guards.noActiveNote || guards.isDup) return;
 
   const targets = textCaptureTargets();
-  if (process.env.DOCKLY_CLIP_TEST === '1') {
+  if (process.env.NOCK_CLIP_TEST === '1') {
     console.log('[clipboard] targets=', targets.length);
   }
   if (targets.length === 0) return;
@@ -306,7 +306,7 @@ function handleTextCapture(): void {
   const payload = { text, noteId: state.activeNoteId, capturedAt: Date.now() };
   for (const t of targets) {
     if (!t.isDestroyed()) {
-      if (process.env.DOCKLY_CLIP_TEST === '1') {
+      if (process.env.NOCK_CLIP_TEST === '1') {
         console.log('[clipboard] sending clipboard:text to win id=%s destroyed=%s', t.webContents.id, t.isDestroyed());
       }
       t.webContents.send('clipboard:text', payload);
@@ -314,7 +314,7 @@ function handleTextCapture(): void {
   }
 }
 
-/** A renderer reported that the user copied text inside Dockly. */
+/** A renderer reported that the user copied text inside Nock. */
 export function markSelfCopy(): void {
   lastSelfCopyAt = Date.now();
 }
@@ -324,7 +324,7 @@ export function markSelfCopy(): void {
 // ---------------------------------------------------------------------------
 
 /** Remember the content already on the clipboard at start time so we never
- *  treat something copied before Dockly began watching as a new capture. */
+ *  treat something copied before Nock began watching as a new capture. */
 function primeSignature(): void {
   try {
     const img = clipboard.readImage();

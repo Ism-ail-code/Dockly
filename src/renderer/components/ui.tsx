@@ -167,7 +167,10 @@ export function Dropdown({
           <button
             key={i}
             className={`menu-item${item.danger ? ' danger' : ''}`}
-            onClick={() => {
+            onClick={(e) => {
+              // Menu items must never leak their click to the container that
+              // hosts the dropdown (e.g. a note card that opens the note).
+              e.stopPropagation();
               onClose();
               item.onClick?.();
             }}

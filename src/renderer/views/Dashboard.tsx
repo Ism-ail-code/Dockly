@@ -33,7 +33,7 @@ export function Dashboard() {
       setToday(null);
       return;
     }
-    void window.dockly.stats.today().then(setToday).catch(() => {});
+    void window.nock.stats.today().then(setToday).catch(() => {});
   }, [settings.dailyStats]);
 
   const hour = new Date().getHours();

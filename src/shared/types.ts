@@ -77,6 +77,7 @@ export interface Settings {
   dockTransparencyEnabled: boolean;
   dockTransparencySlider: boolean;
   dockTransparency: number; // 0.4 - 1, applied only when transparency is enabled
+  dockGlassStyle: 'frosted' | 'clear'; // frosted = acrylic blur; clear = true see-through
   dockSide: 'left' | 'right';
   dockWidth: number;
   dockHeight: number; // 0 = auto (full work-area height)

@@ -85,7 +85,7 @@ function main(): void {
         hCursor: 0n,
         hbrBackground: 0n,
         lpszMenuName: null,
-        lpszClassName: 'DocklyClipWatcher',
+        lpszClassName: 'NockClipWatcher',
         hIconSm: 0n,
       },
       'WNDCLASSEXW *',
@@ -93,7 +93,7 @@ function main(): void {
   );
   if (!atom) throw new Error('RegisterClassExW failed: ' + koffi.errno());
 
-  const hwnd = CreateWindowExW(0, 'DocklyClipWatcher', null, 0, 0, 0, 0, 0, HWND_MESSAGE, 0n, 0n, 0n);
+  const hwnd = CreateWindowExW(0, 'NockClipWatcher', null, 0, 0, 0, 0, 0, HWND_MESSAGE, 0n, 0n, 0n);
   if (!hwnd) throw new Error('CreateWindowExW failed: ' + koffi.errno());
   if (!AddClipboardFormatListener(hwnd)) {
     throw new Error('AddClipboardFormatListener failed: ' + koffi.errno());

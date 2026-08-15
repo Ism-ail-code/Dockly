@@ -51,6 +51,7 @@ export const DEFAULT_SETTINGS: Settings = {
   dockTransparencyEnabled: false,
   dockTransparencySlider: true,
   dockTransparency: 1,
+  dockGlassStyle: 'frosted',
   dockSide: 'right',
   dockWidth: DOCK_DEFAULT_WIDTH,
   dockHeight: DOCK_DEFAULT_HEIGHT,
@@ -62,7 +63,7 @@ export const DEFAULT_SETTINGS: Settings = {
   spellCheck: false,
   // Clipboard
   autoInsertScreenshots: true,
-  autoCaptureText: false,
+  autoCaptureText: true,
   confirmBeforeInsert: false,
   ignoreDuplicateClipboard: true,
   // Study

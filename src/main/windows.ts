@@ -39,7 +39,7 @@ export function createMainWindow(theme: string): BrowserWindow {
     minHeight: 620,
     show: false,
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
-    title: 'Dockly',
+    title: 'Nock',
     backgroundColor: '#00000000',
     backgroundMaterial: 'acrylic',
     titleBarStyle: 'hidden',
@@ -54,9 +54,10 @@ export function createMainWindow(theme: string): BrowserWindow {
     },
   });
   win.loadURL(mainWindowUrl());
-  // Dockly is sticky-note-first: the main window is the management "library" and
-  // only appears on demand (dashboard/settings buttons in the dock, or second
-  // instance). It is created at boot so navigation is instant, but never shown.
+  // The main window is the management "library": it is created at boot so
+  // navigation is instant, and it is the app's front door — it is shown and
+  // focused at startup and whenever the user asks for the library. The dock
+  // never steals focus from it (showDock uses showInactive).
   win.on('minimize', () => console.log('[lifecycle] main minimized'));
   win.on('restore', () => console.log('[lifecycle] main restored'));
   win.on('close', () => {
@@ -202,11 +203,16 @@ export function createDockWindow(): BrowserWindow {
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   // Transparency is applied in CSS (the panel background) so controls keep
   // full contrast; the OS acrylic material supplies the blur behind the dock.
+  // "Clear" glass skips the material entirely so the desktop behind stays
+  // sharp and readable through the translucent panel.
   if (process.platform === 'win32') {
     try {
-      win.setBackgroundMaterial(s?.dockTransparencyEnabled ? 'acrylic' : 'none');
-    } catch {
-      /* Windows 10 / unsupported — CSS translucency alone still applies */
+      const glass = s?.dockGlassStyle ?? 'frosted';
+      const material = s?.dockTransparencyEnabled && glass === 'frosted' ? 'acrylic' : 'none';
+      win.setBackgroundMaterial(material);
+      console.log(`[dock] background material → ${material}`);
+    } catch (e) {
+      console.log('[dock] setBackgroundMaterial failed:', String(e));
     }
   }
   const opacity = s?.dockTransparencyEnabled ? Math.max(0.2, Math.min(1, s.dockTransparency ?? 1)) : 1;
@@ -351,13 +357,44 @@ export function setDockTransparency(enabled: boolean, value: number): void {
     win.setOpacity(1);
     if (process.platform === 'win32') {
       try {
-        win.setBackgroundMaterial(enabled ? 'acrylic' : 'none');
-      } catch {
-        /* Windows 10 / unsupported — CSS translucency alone still applies */
+        const glass = state.settings?.dockGlassStyle ?? 'frosted';
+        const material = enabled && glass === 'frosted' ? 'acrylic' : 'none';
+        win.setBackgroundMaterial(material);
+        console.log(`[dock] background material → ${material}`);
+      } catch (e) {
+        console.log('[dock] setBackgroundMaterial failed:', String(e));
       }
     }
   }
   state.setDockConfig({ opacity: enabled ? Math.max(0.2, Math.min(1, value)) : 1 });
+}
+
+/** Rebuilds the dock window so the OS background material (acrylic vs none)
+ *  is applied at creation time. Live setBackgroundMaterial switches can leave
+ *  the old material stuck on existing windows — recreating guarantees Clear
+ *  glass truly removes the blur. Bounds, side, collapse and on-top state are
+ *  preserved so the change is seamless. */
+export function recreateDockWindow(): void {
+  const old = dockWin;
+  const bounds = old && !old.isDestroyed() ? old.getBounds() : null;
+  const wasOpen = state.dock.open;
+  if (old && !old.isDestroyed()) {
+    old.removeAllListeners('closed');
+    old.close();
+  }
+  dockWin = null;
+  const win = createDockWindow();
+  if (bounds) {
+    const area = workArea();
+    const w = state.dock.collapsed
+      ? DOCK_COLLAPSED_WIDTH
+      : Math.max(DOCK_MIN_WIDTH, Math.min(DOCK_MAX_WIDTH, bounds.width));
+    const x = state.dock.side === 'left' ? area.x : area.x + area.width - w;
+    const h = clampDockHeight(bounds.height);
+    win.setBounds({ x, y: bounds.y, width: w, height: h }, false);
+    state.setDockConfig({ width: w, height: h, y: bounds.y, topEdgeFree: bounds.y > area.y + 2 });
+  }
+  if (wasOpen) win.showInactive();
 }
 
 export function applySpellChecker(enabled: boolean): void {

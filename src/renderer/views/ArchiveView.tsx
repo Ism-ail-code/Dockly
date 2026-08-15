@@ -11,20 +11,20 @@ export function ArchiveView() {
   const toast = useToast();
 
   const load = async () => {
-    setNotes(await window.dockly.notes.list(undefined, true));
+    setNotes(await window.nock.notes.list(undefined, true));
   };
   useEffect(() => {
     void load();
   }, []);
 
   const restore = async (id: string) => {
-    await window.dockly.notes.archive(id, false);
+    await window.nock.notes.archive(id, false);
     toast.success('Note restored');
     await load();
   };
   const remove = async (id: string) => {
     setConfirmDelete(null);
-    await window.dockly.notes.delete(id);
+    await window.nock.notes.delete(id);
     useApp.getState().deleteNoteLocal(id);
     toast.success('Note deleted forever');
     await load();
@@ -41,7 +41,7 @@ export function ArchiveView() {
       </div>
       {notes === null ? (
         <div className="skeleton" style={{ height: 180, marginTop: 24 }} />
-      ) : notes.length === 0 ? (
+      ) : notes.filter((n) => n.isArchived).length === 0 ? (
         <EmptyState
           icon={ArchiveRestore}
           title="Nothing archived"
@@ -49,7 +49,7 @@ export function ArchiveView() {
         />
       ) : (
         <div className="archive-list stagger">
-          {notes.map((n, i) => (
+          {notes.filter((n) => n.isArchived).map((n, i) => (
             <div key={n.id} className="archive-item card" style={{ '--i': i } as React.CSSProperties}>
               <div className="archive-info">
                 <div className="archive-title t-display">{n.title || 'Untitled note'}</div>
