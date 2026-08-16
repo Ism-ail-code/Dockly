@@ -72,6 +72,8 @@ export const DEFAULT_SETTINGS: Settings = {
   readingProgress: false,
   sessionResume: false,
   dailyStats: false,
+  // Updates
+  autoCheckUpdates: true,
   // General / Advanced
   launchOnStartup: false,
   onboarded: false,

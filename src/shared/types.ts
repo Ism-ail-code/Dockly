@@ -98,6 +98,8 @@ export interface Settings {
   readingProgress: boolean;
   sessionResume: boolean;
   dailyStats: boolean;
+  // Updates
+  autoCheckUpdates: boolean;
   // General / Advanced
   launchOnStartup: boolean;
   onboarded: boolean;
@@ -142,4 +144,28 @@ export interface NoteContentUpdate {
   noteId: string;
   content: string;
   updatedAt: number;
+}
+
+/** Where the update-check result currently stands. Mirrored to the renderer. */
+export type UpdateState =
+  | { phase: 'idle' }
+  | { phase: 'checking' }
+  | { phase: 'up-to-date'; checkedAt: number }
+  | {
+      phase: 'available';
+      version: string;
+      htmlUrl: string;
+      notes: string | null;
+      releasedAt?: string;
+    }
+  | { phase: 'downloading'; version: string; percent: number }
+  | { phase: 'downloaded'; version: string }
+  | { phase: 'error'; message: string };
+
+/** Static facts the renderer needs to render the Updates UI. */
+export interface UpdateInfo {
+  currentVersion: string;
+  isPackaged: boolean;
+  /** True when Nock can self-install the downloaded update (NSIS install). */
+  installSupported: boolean;
 }

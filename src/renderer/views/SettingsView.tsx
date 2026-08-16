@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import {
   Check,
   ClipboardList,
+  Download,
   GraduationCap,
   FolderOpen,
   Info,
@@ -15,6 +16,7 @@ import {
   RotateCcw,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   Wrench,
   X,
@@ -380,6 +382,27 @@ function buildCategories(onReset: () => void): Category[] {
         title: 'Daily study statistics',
         desc: "Show today's notes, screenshots and edits on the dashboard",
         keywords: 'stats statistics daily analytics dashboard today',
+      },
+    ],
+  },
+  {
+    id: 'updates',
+    title: 'Updates',
+    icon: <Download size={15} />,
+    rows: [
+      {
+        kind: 'toggle',
+        key: 'autoCheckUpdates',
+        title: 'Automatic updates',
+        desc: 'Automatically check for new Nock versions',
+        keywords: 'update check automatic version upgrade github',
+      },
+      {
+        kind: 'custom',
+        title: 'Check for updates',
+        desc: 'Compare against the latest Nock release on GitHub',
+        keywords: 'check now version upgrade release status current',
+        render: () => <UpdateControls />,
       },
     ],
   },
@@ -752,4 +775,87 @@ function dotColor(name: AccentColor): string {
     pink: '#ec4899', slate: '#64748b',
   };
   return map[name];
+}
+
+/** Settings → Updates controls: current version, Check Now and live status. */
+function UpdateControls() {
+  const updateState = useApp((s) => s.updateState);
+  const updateInfo = useApp((s) => s.updateInfo);
+  const checkUpdates = useApp((s) => s.checkUpdates);
+  const downloadUpdate = useApp((s) => s.downloadUpdate);
+  const openReleasePage = useApp((s) => s.openReleasePage);
+  const openUpdateNotes = useApp((s) => s.openUpdateNotes);
+  const setUpdateInstallPrompt = useApp((s) => s.setUpdateInstallPrompt);
+
+  const canInstall = updateInfo?.installSupported === true;
+  const version = updateInfo?.currentVersion ?? '';
+
+  let status: ReactNode = null;
+  if (updateState.phase === 'checking') {
+    status = <span className="update-status">Checking for updates…</span>;
+  } else if (updateState.phase === 'up-to-date') {
+    status = (
+      <span className="update-status update-status-ok">
+        <Check size={13} />
+        You're using the latest version.
+      </span>
+    );
+  } else if (updateState.phase === 'available') {
+    status = (
+      <div className="update-status update-status-new">
+        <span>Nock {updateState.version} is available.</span>
+        <button className="btn sm" onClick={() => void openUpdateNotes()} data-tooltip="See what changed in this release">
+          <Sparkles size={13} />
+          What's New
+        </button>
+        <button
+          className="btn btn-primary sm"
+          onClick={() => (canInstall ? void downloadUpdate() : void openReleasePage())}
+          data-tooltip={canInstall ? 'Download and install the update' : 'Open the release page to download'}
+        >
+          <Download size={13} />
+          Update Now
+        </button>
+      </div>
+    );
+  } else if (updateState.phase === 'downloading') {
+    status = <span className="update-status">Downloading update… {updateState.percent}%</span>;
+  } else if (updateState.phase === 'downloaded') {
+    status = (
+      <div className="update-status update-status-new">
+        <span>Update ready — restart Nock to install.</span>
+        <button className="btn btn-primary sm" onClick={() => setUpdateInstallPrompt(true)} data-tooltip="Restart Nock and finish installing">
+          Restart now
+        </button>
+      </div>
+    );
+  } else if (updateState.phase === 'error') {
+    status = <span className="update-status update-status-warn">Unable to check for updates right now.</span>;
+  }
+
+  return (
+    <div className="update-controls">
+      <div className="update-version">
+        Current version <code>v{version}</code>
+        {updateState.phase === 'available' && canInstall && (
+          <span className="update-dot" data-tooltip="An update is available" aria-label="Update available" />
+        )}
+      </div>
+      <div className="update-actions">
+        <button
+          className="btn"
+          onClick={() => void checkUpdates()}
+          disabled={updateState.phase === 'checking'}
+          data-tooltip="Check the Nock GitHub releases for a newer version"
+        >
+          <RotateCcw size={13} />
+          Check Now
+        </button>
+        {status}
+      </div>
+      <div className="update-note t-sub">
+        {canInstall ? "Nock checks quietly after launch and reminds you once per version." : "This build updates manually — you'll be taken to the releases page."}
+      </div>
+    </div>
+  );
 }

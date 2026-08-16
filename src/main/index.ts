@@ -5,6 +5,7 @@ import { registerIpc, registerProtocol } from './ipc';
 import { registerGlobalHotkeys, unregisterGlobalHotkeys } from './hotkeys';
 import { startDockAutoHidePoll, stopDockAutoHidePoll } from './autohide';
 import { initClipboardListener, stopClipboardListener } from './clipboard';
+import { initUpdater } from './updater';
 import { runClipboardE2E } from './cliptest';
 import { state, hub } from './state';
 
@@ -50,6 +51,7 @@ if (!gotLock) {
     registerIpc();
     registerGlobalHotkeys();
     initClipboardListener();
+    initUpdater();
 
     createMainWindow(state.settings.theme);
 
@@ -1057,6 +1059,63 @@ const FULL_SCRIPT = `(async () => {
     st.helpSection = $$('.settings-section-title').some((t) => (t.textContent ?? '').includes('Help & Getting Started'));
     st.helpRows = $$('.settings-section').find((s) => (s.textContent ?? '').includes('Help & Getting Started')) ? $$('.settings-row').filter((r) => ['Your first note', 'Capture a screenshot', 'Pin a note to your screen', 'Replay the welcome tour'].some((h) => (r.textContent ?? '').includes(h))).length : 0;
     st.replayTourBtn = !!$('button[data-tooltip="Replay the welcome tour"]');
+
+    // ================= UPDATES (mock scenarios: error → up-to-date → available) =================
+    const upd = {};
+    try {
+      upd.section = $$('.settings-section-title').some((t) => (t.textContent ?? '').includes('Updates'));
+      upd.autoToggle = !!swFor('Automatic updates');
+      upd.versionShown = ($$('.update-version code')[0]?.textContent ?? '').includes('1.0.0');
+      const checkBtn = () => $('button[data-tooltip="Check the Nock GitHub releases for a newer version"]');
+      upd.checkBtn = !!checkBtn();
+
+      await window.nock.updates.mockSet('error');
+      clickEl(checkBtn()); await sleep(1400);
+      upd.errorStatus = (($('.update-status-warn')?.textContent ?? '').includes('Unable to check'));
+      upd.diag1 = {
+        dom: $$('.update-status').map((s) => (s.textContent ?? '').trim()),
+        state: await window.nock.updates.getState(),
+      };
+
+      await window.nock.updates.mockSet('up-to-date');
+      clickEl(checkBtn()); await sleep(1400);
+      upd.upToDateStatus = (($('.update-status-ok')?.textContent ?? '').includes("latest version"));
+      upd.diag2 = {
+        dom: $$('.update-status').map((s) => (s.textContent ?? '').trim()),
+        state: await window.nock.updates.getState(),
+      };
+
+      await window.nock.updates.mockSet('available');
+      clickEl(checkBtn()); await sleep(1500);
+      upd.availableStatus = (($('.update-status-new')?.textContent ?? '').includes('is available'));
+      upd.diag3 = {
+        dom: $$('.update-status').map((s) => (s.textContent ?? '').trim()),
+        state: await window.nock.updates.getState(),
+        notice: !!$('.update-notice'),
+      };
+      upd.noticeShown = !!$('.update-notice');
+      upd.noticeVersion = (($('.update-notice-title')?.textContent ?? '').includes('Nock 9.9.9'));
+
+      clickEl($('.update-notice button[data-tooltip="See what changed in this release"]')); await sleep(900);
+      upd.notesModal = (($('.modal-title')?.textContent ?? '').includes('Nock 9.9.9'));
+      upd.notesText = (($('.update-notes')?.textContent ?? '').includes('Improved dock performance'));
+      // Close the notes modal via the Close button (Update Now would open the
+      // default browser during QA — never click it).
+      clickEl($$('.modal-foot .btn').find((b) => (b.textContent ?? '').trim() === 'Close')); await sleep(300);
+      upd.notesClosed = !$('.modal');
+
+      clickEl($('.update-notice button[data-tooltip="Not now — remind me later"]')); await sleep(300);
+      upd.laterDismisses = !$('.update-notice');
+      // The same release is not re-announced: the settings status still shows
+      // the update, but no second notification appears.
+      upd.settingsStillShows = (($('.update-status-new')?.textContent ?? '').includes('is available'));
+      upd.noDuplicate = !$('.update-notice');
+      upd.ok = !!(upd.section && upd.autoToggle && upd.versionShown && upd.checkBtn && upd.errorStatus && upd.upToDateStatus && upd.availableStatus && upd.noticeShown && upd.noticeVersion && upd.notesModal && upd.notesText && upd.notesClosed && upd.laterDismisses && upd.settingsStillShows && upd.noDuplicate);
+    } catch (e) {
+      upd.error = String(e);
+      upd.ok = false;
+    }
+    results.upd = upd;
 
     // study/editor extras driven by settings
     st.studyTimerSet = await toggleTo('Study timer', true);

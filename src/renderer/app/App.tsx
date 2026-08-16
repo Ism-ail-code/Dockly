@@ -5,6 +5,7 @@ import { SearchOverlay } from '@/components/SearchOverlay';
 import { AnnotationEditor } from '@/components/AnnotationEditor';
 import { VersionPanel } from '@/components/VersionPanel';
 import { ToastRegion, useToast } from '@/components/ui';
+import { UpdateUI } from '@/components/UpdateUI';
 import { TooltipHost } from '@/components/Tooltip';
 import { playSound } from '@/lib/sound';
 import { Onboarding } from '@/views/Onboarding';
@@ -36,6 +37,7 @@ export function App() {
 
   useEffect(() => {
     void useApp.getState().boot();
+    void useApp.getState().initUpdates();
   }, []);
 
   // ---------- clipboard: screenshot captured ----------
@@ -249,6 +251,7 @@ export function App() {
         </div>
       )}
       <ToastRegion />
+      <UpdateUI />
       <TooltipHost />
     </div>
   );

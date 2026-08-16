@@ -33,6 +33,7 @@
     "@tiptap/pm": "^2.11.5",
     "@tiptap/react": "^2.11.5",
     "@tiptap/starter-kit": "^2.11.5",
+    "electron-updater": "^6.8.9",
     "koffi": "^3.1.4",
     "lucide-react": "^0.469.0",
     "react": "^18.3.1",
@@ -71,8 +72,18 @@
     "win": {
       "icon": "src/assets/icon.png",
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "nsis": {
@@ -86,6 +97,13 @@
     },
     "portable": {
       "artifactName": "Nock-${version}-portable.${ext}"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Ism-ail-code",
+        "repo": "Nock"
+      }
+    ]
   }
 }

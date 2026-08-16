@@ -13,7 +13,7 @@ await esbuild.build({
   platform: 'node',
   format: 'cjs',
   target: 'node20',
-  external: ['electron', 'sql.js', 'koffi'],
+  external: ['electron', 'sql.js', 'koffi', 'electron-updater'],
   outdir: 'dist',
   entryNames: '[dir]/[name]',
   logLevel: 'info',

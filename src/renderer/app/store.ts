@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DockConfig, Note, Settings, Subject, SubjectStats } from '@shared/types';
+import type { DockConfig, Note, Settings, Subject, SubjectStats, UpdateInfo, UpdateState } from '@shared/types';
 import { DEFAULT_SETTINGS } from '@shared/defaults';
 
 export type View = 'dashboard' | 'subject' | 'editor' | 'settings' | 'archive';
@@ -48,10 +48,26 @@ interface AppState {
   annotationOpen: boolean;
   annotationTarget: string | null;
   remoteContent: { noteId: string; content: string; updatedAt: number } | null;
+  updateState: UpdateState;
+  updateInfo: UpdateInfo | null;
+  updateNotes: string | null;
+  /** Version the user dismissed ("Later") — the same release is not re-shown this session. */
+  updateNotifiedVersion: string | null;
+  updateNotesOpen: boolean;
+  updateInstallPrompt: boolean;
 
   boot: () => Promise<void>;
   applySettings: (s: Settings) => void;
   setSetting: <K extends keyof Settings>(key: K, value: Settings[K]) => Promise<void>;
+  initUpdates: () => Promise<void>;
+  checkUpdates: () => Promise<void>;
+  dismissUpdate: () => void;
+  downloadUpdate: () => Promise<void>;
+  installUpdate: () => void;
+  openReleasePage: () => Promise<void>;
+  openUpdateNotes: () => Promise<void>;
+  closeUpdateNotes: () => void;
+  setUpdateInstallPrompt: (v: boolean) => void;
   setView: (v: View) => void;
   openSubject: (id: string) => Promise<void>;
   openNote: (id: string) => Promise<void>;
@@ -114,6 +130,12 @@ export const useApp = create<AppState>((set, get) => ({
   annotationOpen: false,
   annotationTarget: null,
   remoteContent: null,
+  updateState: { phase: 'idle' },
+  updateInfo: null,
+  updateNotes: null,
+  updateNotifiedVersion: null,
+  updateNotesOpen: false,
+  updateInstallPrompt: false,
 
   boot: async () => {
     const settings = await window.nock.settings.get();
@@ -259,6 +281,49 @@ export const useApp = create<AppState>((set, get) => ({
 
   pushRemoteContent: (c) => set({ remoteContent: c }),
   clearRemoteContent: () => set({ remoteContent: null }),
+
+  initUpdates: async () => {
+    window.nock.updates.onState((s) => set({ updateState: s }));
+    const info = await window.nock.updates.getInfo().catch(() => null);
+    set({ updateInfo: info });
+    const s = await window.nock.updates.getState().catch(() => null);
+    if (s) set({ updateState: s });
+  },
+
+  checkUpdates: async () => {
+    set({ updateState: { phase: 'checking' }, updateNotes: null });
+    await window.nock.updates.check().catch(() => set({ updateState: { phase: 'error', message: 'Unable to check for updates right now.' } }));
+  },
+
+  dismissUpdate: () => {
+    const s = get();
+    if (s.updateState.phase === 'available') set({ updateNotifiedVersion: s.updateState.version });
+  },
+
+  downloadUpdate: async () => {
+    const s = get();
+    if (s.updateState.phase !== 'available') return;
+    set({ updateInstallPrompt: false });
+    await window.nock.updates.download().catch(() => set({ updateState: { phase: 'error', message: 'Unable to check for updates right now.' } }));
+  },
+
+  installUpdate: () => {
+    get().setUpdateInstallPrompt(false);
+    void window.nock.updates.install();
+  },
+
+  openReleasePage: async () => {
+    await window.nock.updates.openRelease().catch(() => undefined);
+  },
+
+  openUpdateNotes: async () => {
+    set({ updateNotesOpen: true, updateNotes: null });
+    const notes = await window.nock.updates.notes().catch(() => null);
+    set({ updateNotes: notes });
+  },
+
+  closeUpdateNotes: () => set({ updateNotesOpen: false }),
+  setUpdateInstallPrompt: (v) => set({ updateInstallPrompt: v }),
 
   deleteNoteLocal: (id) =>
     set((s) => ({

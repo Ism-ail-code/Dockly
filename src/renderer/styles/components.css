@@ -578,3 +578,147 @@ button:focus-visible,
   height: 17px;
   color: var(--accent);
 }
+
+/* ---------- Update notification + notes ---------- */
+.update-notice {
+  position: fixed;
+  top: calc(var(--titlebar-h) + 14px);
+  right: 18px;
+  z-index: 299;
+  width: 320px;
+  padding: 12px 13px 13px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--surface-solid) 90%, transparent);
+  backdrop-filter: blur(24px);
+  border: 1px solid var(--accent-ring, var(--border-strong));
+  box-shadow: var(--shadow-3);
+  animation: slideInRight 0.3s var(--ease-out) both;
+}
+.update-notice-head {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.update-notice-icon {
+  display: flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  flex: none;
+}
+.update-notice-icon svg {
+  width: 13px;
+  height: 13px;
+}
+.update-notice-title {
+  flex: 1;
+  font-size: var(--t-13);
+  font-weight: 600;
+}
+.update-notice-sub {
+  margin: 7px 0 10px 33px;
+  font-size: var(--t-12);
+  color: var(--text-2);
+  line-height: 1.5;
+}
+.update-notice-actions {
+  display: flex;
+  gap: 6px;
+  margin-left: 33px;
+}
+.update-notice-actions .btn {
+  padding: 4px 10px;
+  font-size: var(--t-12);
+}
+.update-notice-actions .btn:last-child {
+  margin-left: auto;
+}
+.update-notes-title {
+  font-size: var(--t-12);
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+.update-notes {
+  margin: 0;
+  white-space: pre-wrap;
+  font-family: inherit;
+  font-size: var(--t-13);
+  line-height: 1.55;
+  color: var(--text-1);
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+/* ---------- Settings → Updates ---------- */
+.update-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: flex-start;
+}
+.update-version {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--t-13);
+  color: var(--text-2);
+}
+.update-version code {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-1);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  padding: 1px 7px;
+  font-size: var(--t-12);
+}
+.update-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  animation: updatePulse 2s var(--ease-io) infinite;
+}
+@keyframes updatePulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.update-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.update-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--t-13);
+  color: var(--text-2);
+}
+.update-status svg {
+  width: 13px;
+  height: 13px;
+}
+.update-status-ok {
+  color: var(--ok);
+}
+.update-status-warn {
+  color: var(--warn);
+}
+.update-status-new {
+  color: var(--text-1);
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.update-note {
+  font-size: var(--t-12);
+  max-width: 360px;
+  line-height: 1.5;
+}

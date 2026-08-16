@@ -8,6 +8,8 @@ import type {
   Settings,
   Subject,
   SubjectStats,
+  UpdateInfo,
+  UpdateState,
   VersionSnapshot,
 } from '../shared/types';
 
@@ -84,6 +86,18 @@ const api = {
 
   stats: {
     today: () => invoke<{ day: string; notes: number; shots: number; edits: number }>('stats:today'),
+  },
+
+  updates: {
+    getState: () => invoke<UpdateState>('updates:get-state'),
+    getInfo: () => invoke<UpdateInfo>('updates:get-info'),
+    check: () => invoke<void>('updates:check'),
+    download: () => invoke<void>('updates:download'),
+    install: () => invoke<void>('updates:install'),
+    notes: () => invoke<string | null>('updates:notes'),
+    openRelease: () => invoke<void>('updates:open-release'),
+    onState: (cb: (s: UpdateState) => void) => on('updates:state', (p) => cb(p as UpdateState)),
+    mockSet: (scenario: string) => invoke<void>('updates:mock-set', scenario),
   },
 
   dock: {
