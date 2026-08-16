@@ -1655,6 +1655,23 @@
   padding: 0 22px;
   border-radius: 12px;
 }
+.onboarding-skip {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: var(--t-12);
+  cursor: pointer;
+  padding: 2px 8px;
+  margin-top: -4px;
+  transition: color var(--dur-1);
+}
+.onboarding-skip:hover {
+  color: var(--text-1);
+}
+.onboarding-skip:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 .onboarding-footer {
   display: flex;
   align-items: center;
@@ -1664,72 +1681,6 @@
 }
 .onboarding-footer svg {
   color: var(--ok);
-}
-.subject-picker {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--sp-2);
-  width: 100%;
-  max-width: 400px;
-  margin-top: var(--sp-2);
-}
-.pick-card {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-1);
-  cursor: pointer;
-  text-align: left;
-  transition: all var(--dur-2) var(--ease-io);
-  animation: riseIn 0.35s var(--ease-out) both;
-  animation-delay: calc(var(--pick-i) * 45ms);
-}
-.pick-card:hover {
-  border-color: var(--accent-ring);
-  transform: translateY(-1px);
-}
-.pick-card.selected {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-.pick-icon {
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 9px;
-  background: var(--surface-3);
-  color: var(--text-2);
-  flex: none;
-}
-.pick-card.selected .pick-icon {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.pick-name {
-  font-size: var(--t-13);
-  font-weight: 570;
-  flex: 1;
-}
-.pick-check {
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--surface-3);
-  color: var(--text-3);
-  flex: none;
-}
-.pick-card.selected .pick-check {
-  background: var(--accent);
-  color: var(--accent-ink);
 }
 
 /* ---------- Annotation editor ---------- */

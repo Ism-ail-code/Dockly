@@ -1,26 +1,28 @@
 import { useState } from 'react';
-import { ArrowRight, Camera, Check, Dock, FileText, NotebookPen, ScanSearch, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Camera, Dock, ScanSearch, StickyNote } from 'lucide-react';
 import { useApp } from '@/app/store';
 import { NockLogo } from '@/components/TopBar';
-import { SubjectIcon } from '@/components/ui';
-import { DEFAULT_SUBJECTS } from '@shared/defaults';
-import type { AccentColor } from '@shared/types';
 
 const STEPS = [
   {
-    icon: FileText,
-    title: 'Your notes, beautifully organised',
-    sub: 'Subjects, tags, favorites and instant search — everything you capture stays on your PC, offline.',
+    icon: Dock,
+    title: 'Sticky Workspace',
+    sub: 'Pin a note to the edge of your screen — it stays on top of everything while you work.',
   },
   {
     icon: Camera,
-    title: 'Screenshots, instantly in your notes',
-    sub: 'Press Win + Shift + S and Nock places the snip exactly where your cursor is. No dialogs, no clicks.',
+    title: 'Capture Anything',
+    sub: 'Press Win + Shift + S anywhere and the snip lands in your note at your cursor. No dialogs, no clicks.',
   },
   {
-    icon: Dock,
-    title: 'Study with a docked sidebar',
-    sub: 'Dock any note to the edge of your screen. It stays on top of Chrome, PDFs and YouTube — always in view.',
+    icon: StickyNote,
+    title: 'Stay On Top',
+    sub: 'The library docks into a slim rail on the edge of your screen, ready to switch notes mid-task.',
+  },
+  {
+    icon: ScanSearch,
+    title: 'Organize Your Study',
+    sub: 'Subjects hold their notes, tags link ideas, favorites pin what matters. Create your first subject on the dashboard.',
   },
 ];
 
@@ -29,33 +31,16 @@ function IconOf({ step }: { step: number }) {
   return <C size={40} strokeWidth={1.6} />;
 }
 
-export function Onboarding() {  const boot = useApp((s) => s.boot);
+export function Onboarding() {
+  const boot = useApp((s) => s.boot);
   const setSetting = useApp((s) => s.setSetting);
-  const refreshSubjects = useApp((s) => s.refreshSubjects);
   const [step, setStep] = useState(0);
-  const [picked, setPicked] = useState<Set<string>>(new Set(DEFAULT_SUBJECTS.map((s) => s.name)));
   const [busy, setBusy] = useState(false);
 
-  const toggle = (name: string) => {
-    setPicked((prev) => {
-      const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
-      return next;
-    });
-  };
-
-  const finish = async () => {
+  const leaveIntro = async () => {
     if (busy) return;
     setBusy(true);
-    let order = 0;
-    for (const s of DEFAULT_SUBJECTS) {
-      if (!picked.has(s.name)) continue;
-      await window.nock.subjects.create({ name: s.name, icon: s.icon, color: s.color as AccentColor });
-      order++;
-    }
     await setSetting('onboarded', true);
-    await refreshSubjects();
     await boot();
     // Sticky-note-first: after setup, open the docked sticky workspace and tuck
     // the library away — the dock's Dashboard button brings it back.
@@ -70,63 +55,29 @@ export function Onboarding() {  const boot = useApp((s) => s.boot);
           <NockLogo size={44} />
         </div>
 
-        {step < 3 ? (
-          <>
-            <div className="onboarding-dots">
-              {STEPS.map((_, i) => (
-                <span key={i} className={`dot${i === step ? ' active' : ''}`} />
-              ))}
-            </div>
-            <div key={step} className="onboarding-step view-enter">
-              <div className="onboarding-art">
-                <IconOf step={step} />
-              </div>
-              <h1 className="onboarding-title t-display">{STEPS[step].title}</h1>
-              <p className="onboarding-sub">{STEPS[step].sub}</p>
-            </div>
-            <button
-              className="btn btn-primary onboarding-cta"
-              onClick={() => (step < 2 ? setStep(step + 1) : setStep(3))}
-            >
-              {step < 2 ? 'Next' : 'Choose your subjects'}
-              <ArrowRight size={15} />
-            </button>
-          </>
-        ) : (
-          <div className="onboarding-step view-enter">
-            <div className="onboarding-art small">
-              <NotebookPen size={34} strokeWidth={1.6} />
-            </div>
-            <h1 className="onboarding-title t-display">Pick your subjects</h1>
-            <p className="onboarding-sub">
-              You can add, rename or remove them anytime. Choose the ones you study most.
-            </p>
-            <div className="subject-picker">
-              {DEFAULT_SUBJECTS.map((s, i) => {
-                const selected = picked.has(s.name);
-                return (
-                  <button
-                    key={s.name}
-                    className={`pick-card${selected ? ' selected' : ''}`}
-                    onClick={() => toggle(s.name)}
-                    style={{ '--pick-i': i } as React.CSSProperties}
-                  >
-                    <div className="pick-icon">
-                      <SubjectIcon name={s.icon} />
-                    </div>
-                    <span className="pick-name">{s.name}</span>
-                    <span className="pick-check">
-                      {selected ? <Check size={12} /> : <X size={12} />}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <button className="btn btn-primary onboarding-cta" disabled={picked.size === 0 || busy} onClick={finish}>
-              <Sparkles size={15} />
-              {busy ? 'Setting up…' : 'Start studying'}
-            </button>
+        <div className="onboarding-dots">
+          {STEPS.map((_, i) => (
+            <span key={i} className={`dot${i === step ? ' active' : ''}`} />
+          ))}
+        </div>
+        <div key={step} className="onboarding-step view-enter">
+          <div className="onboarding-art">
+            <IconOf step={step} />
           </div>
+          <h1 className="onboarding-title t-display">{STEPS[step].title}</h1>
+          <p className="onboarding-sub">{STEPS[step].sub}</p>
+        </div>
+        <button
+          className="btn btn-primary onboarding-cta"
+          onClick={() => (step < 3 ? setStep(step + 1) : void leaveIntro())}
+        >
+          {busy ? 'Setting up…' : step < 3 ? 'Next' : 'Get Started'}
+          {!busy && <ArrowRight size={15} />}
+        </button>
+        {step === 0 && (
+          <button className="onboarding-skip" onClick={() => void leaveIntro()} disabled={busy}>
+            Skip intro
+          </button>
         )}
 
         <div className="onboarding-footer">

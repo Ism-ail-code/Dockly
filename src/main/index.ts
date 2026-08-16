@@ -245,13 +245,28 @@ const E2E_SCRIPT = `(async () => {
   };
   try {
     await waitFor('.onboarding');
+    const skipLink = !!$('.onboarding-skip');
     await click('.onboarding-cta');
     await click('.onboarding-cta');
     await click('.onboarding-cta');
+    const ctaFinalLabel = $('.onboarding-cta').textContent.trim();
     await click('.onboarding-cta');
     await waitFor('.dashboard');
+    // The intro no longer creates subjects, so seed the tour's set here.
+    const seeds = [
+      { name: 'Mathematics', icon: 'calculator', color: 'indigo' },
+      { name: 'Physics', icon: 'atom', color: 'violet' },
+      { name: 'Chemistry', icon: 'flask', color: 'teal' },
+      { name: 'Biology', icon: 'leaf', color: 'emerald' },
+      { name: 'English', icon: 'book', color: 'rose' },
+      { name: 'Computer Science', icon: 'code', color: 'sky' },
+    ];
+    for (const s of seeds) await window.nock.subjects.create(s);
+    await sleep(400);
     const subjectCards = $$('.subject-card').length;
     const pickCards = $$('.pick-card').length;
+    const onboardedSetting = (await window.nock.settings.get()).onboarded;
+    const subjectNames = (await window.nock.subjects.list()).map((s) => s.name);
 
     await click('.subject-card');
     await waitFor('.subject-view');
@@ -349,6 +364,10 @@ const E2E_SCRIPT = `(async () => {
 
     return {
       onboardingDone: true,
+      skipLink,
+      ctaFinalLabel,
+      onboardedSetting,
+      subjectNames,
       subjectCards,
       pickCards,
       noteCreated: !!saved,

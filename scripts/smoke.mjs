@@ -54,7 +54,7 @@ if (match) {
   }
   console.log('E2E_RESULT:', JSON.stringify(result, null, 2));
   if (result.error) pass = false;
-  else if (result.onboardingDone && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0 && result.rapidSwitch?.ok === true && result.dockUi?.ok === true && result.nav?.ok === true && result.full?.ok === true && result.dockFull?.ok === true) {
+  else if (result.onboardingDone && result.skipLink === true && result.ctaFinalLabel === 'Get Started' && result.onboardedSetting === true && result.pickCards === 0 && Array.isArray(result.subjectNames) && result.subjectNames.includes('Mathematics') && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0 && result.rapidSwitch?.ok === true && result.dockUi?.ok === true && result.nav?.ok === true && result.full?.ok === true && result.dockFull?.ok === true) {
     console.log('E2E CHECKS PASSED');
   } else if (result.nav?.ok === false) {
     console.log('E2E CHECKS FAILED (navigation round-trips)');
