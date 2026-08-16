@@ -425,6 +425,7 @@ const DOCK_E2E_SCRIPT = `(async () => {
 
   // 5) one final deliberate click must land exactly on that note
   const last = rows()[rows().length - 1];
+  if (!last) return { ok: false, ...results, reason: 'recents vanished mid-test' };
   click(last);
   await sleep(700);
   results.finalClickActive = activeRowTitle() === (last.querySelector('.dock-recent-title')?.textContent ?? null);
