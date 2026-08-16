@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Nock - a premium study companion for Windows. Notes that dock beside your work.",
   "author": "Nock",
-  "homepage": "https://github.com/anomalyco/opencode",
+  "homepage": "https://github.com/Ism-ail-code/Nock",
   "main": "dist/main/index.js",
   "private": true,
   "scripts": {
