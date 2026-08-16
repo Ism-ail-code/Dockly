@@ -14,7 +14,15 @@ fs.rmSync(userData, { recursive: true, force: true });
 
 const child = spawn(electronExe, ['.', `--user-data-dir=${userData}`], {
   cwd: root,
-  env: { ...process.env, NOCK_SMOKE: '1', NOCK_SMOKE_USER_DATA: userData },
+  env: {
+    ...process.env,
+    NOCK_SMOKE: '1',
+    NOCK_SMOKE_USER_DATA: userData,
+    // Deterministic update-check scenarios for the QA run. The smoke tour
+    // switches between 'error' → 'up-to-date' → 'available' via the mock
+    // control channel; production never sees this (no env var → electron-updater).
+    NOCK_UPDATE_MOCK: 'error',
+  },
   stdio: ['ignore', 'pipe', 'pipe'],
 });
 
@@ -54,7 +62,7 @@ if (match) {
   }
   console.log('E2E_RESULT:', JSON.stringify(result, null, 2));
   if (result.error) pass = false;
-  else if (result.onboardingDone && result.skipLink === true && result.ctaFinalLabel === 'Get Started' && result.onboardedSetting === true && result.pickCards === 0 && Array.isArray(result.subjectNames) && result.subjectNames.includes('Mathematics') && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0 && result.rapidSwitch?.ok === true && result.dockUi?.ok === true && result.nav?.ok === true && result.full?.ok === true && result.dockFull?.ok === true) {
+  else if (result.onboardingDone && result.skipLink === true && result.ctaFinalLabel === 'Get Started' && result.onboardedSetting === true && result.pickCards === 0 && Array.isArray(result.subjectNames) && result.subjectNames.includes('Mathematics') && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0 && result.rapidSwitch?.ok === true && result.dockUi?.ok === true && result.nav?.ok === true && result.full?.ok === true && result.dockFull?.ok === true && result.full?.upd?.ok === true) {
     console.log('E2E CHECKS PASSED');
   } else if (result.nav?.ok === false) {
     console.log('E2E CHECKS FAILED (navigation round-trips)');
@@ -67,6 +75,9 @@ if (match) {
     pass = false;
   } else if (result.full?.ok === false) {
     console.log('E2E CHECKS FAILED (full feature tour)');
+    pass = false;
+  } else if (result.full?.upd?.ok === false) {
+    console.log('E2E CHECKS FAILED (update notification flow)');
     pass = false;
   } else if (result.dockFull?.ok === false) {
     console.log('E2E CHECKS FAILED (dock feature tour)');

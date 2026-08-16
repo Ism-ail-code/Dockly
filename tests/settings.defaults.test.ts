@@ -37,6 +37,7 @@ const REQUIRED_KEYS: Record<keyof Settings, true> = {
   readingProgress: true,
   sessionResume: true,
   dailyStats: true,
+  autoCheckUpdates: true,
   launchOnStartup: true,
   onboarded: true,
   lastSubjectId: true,
