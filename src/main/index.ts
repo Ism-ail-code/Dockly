@@ -1230,7 +1230,8 @@ const DOCK_FULL_SCRIPT = `(async () => {
       subjects: (await window.nock.subjects.list()).map((s) => s.name),
     };
     results.noteTitleInput = !!$('.dock-note-title');
-    results.dashBtn = !!byTip('View and organize all your notes');
+    results.dashBtn = !!byTip('Library — return to your main notes library');
+    results.libraryBtnEmphasis = !!($('.dock-btn-library') && getComputedStyle($('.dock-btn-library')).backgroundColor !== 'rgba(0, 0, 0, 0)');
     results.settingsBtn = !!byTip('Customize Nock — themes, transparency, subjects and shortcuts');
     const pinBtn = () => $$('.dock-btn').find((b) => (b.dataset.tooltip ?? '').startsWith('Pin ') || (b.dataset.tooltip ?? '').startsWith('Unpin '));
     results.pinBtn = !!pinBtn();
@@ -1240,6 +1241,30 @@ const DOCK_FULL_SCRIPT = `(async () => {
       results.pinToggles = ((pinBtn()?.dataset.tooltip ?? '').startsWith('Unpin')) !== before;
       clickEl(pinBtn()); await sleep(400);
       results.pinRestored = ((pinBtn()?.dataset.tooltip ?? '').startsWith('Unpin')) === before;
+    }
+
+    // capture quick toggles: clicking flips the shared settings (the single
+    // source of truth for Settings and Dock alike)
+    const captureToggles = () => $$('.dock-capture-toggle');
+    results.captureToggleRow = captureToggles().length === 2;
+    const textToggle = () => $$('.dock-capture-toggle').find((b) => (b.dataset.tooltip ?? '').startsWith('Text Capture') || (b.dataset.tooltip ?? '').startsWith('Click to enable automatic text'));
+    const shotToggle = () => $$('.dock-capture-toggle').find((b) => (b.dataset.tooltip ?? '').startsWith('Screenshot Capture') || (b.dataset.tooltip ?? '').startsWith('Click to enable automatic screenshot'));
+    if (textToggle() && shotToggle()) {
+      const t0 = (await window.nock.settings.get()).autoCaptureText;
+      const s0 = (await window.nock.settings.get()).autoInsertScreenshots;
+      const tTip0 = textToggle()?.dataset.tooltip ?? '';
+      const sTip0 = shotToggle()?.dataset.tooltip ?? '';
+      clickEl(textToggle()); await sleep(500);
+      clickEl(shotToggle()); await sleep(500);
+      results.textToggleFlipped = (await window.nock.settings.get()).autoCaptureText === !t0;
+      results.shotToggleFlipped = (await window.nock.settings.get()).autoInsertScreenshots === !s0;
+      const tTip1 = textToggle()?.dataset.tooltip ?? '';
+      const sTip1 = shotToggle()?.dataset.tooltip ?? '';
+      results.textToggleTooltipTracks = (tTip0.startsWith('Text Capture')) !== (tTip1.startsWith('Text Capture'));
+      results.shotToggleTooltipTracks = (sTip0.startsWith('Screenshot Capture')) !== (sTip1.startsWith('Screenshot Capture'));
+      clickEl(textToggle()); await sleep(500);
+      clickEl(shotToggle()); await sleep(500);
+      results.captureRestored = (await window.nock.settings.get()).autoCaptureText === t0 && (await window.nock.settings.get()).autoInsertScreenshots === s0;
     }
 
     // dock search: query, clear, then open a result (opening a result clears
@@ -1397,7 +1422,7 @@ const DOCK_FULL_SCRIPT = `(async () => {
     // hover — the small dock buttons are only usable if their labels appear.
     await ensureExpanded();
     const tooltips = {};
-    const widgetSel = '.dock-btn, .dock-ttb, .dock-subject-chip, .dock-recents-toggle, .dock-note-star, .dock-resize, .dock-resize-t, .dock-resize-b, .dock-resize-tc, .dock-resize-bc';
+    const widgetSel = '.dock-btn, .dock-ttb, .dock-subject-chip, .dock-recents-toggle, .dock-note-star, .dock-resize, .dock-resize-t, .dock-resize-b, .dock-resize-tc, .dock-resize-bc, .dock-capture-toggle';
     const widgets = $$(widgetSel);
     results.tooltipState = {
       dockCls: $('.dock')?.className ?? null,
@@ -1516,7 +1541,8 @@ const DOCK_FULL_SCRIPT = `(async () => {
 
     results.ok = !!(
       results.glassFrosted && results.newBtn && results.newCreatesNote && results.noteTitleInput &&
-      results.dashBtn && results.settingsBtn && results.pinBtn && results.pinToggles && results.pinRestored &&
+      results.dashBtn && results.libraryBtnEmphasis && results.settingsBtn && results.pinBtn && results.pinToggles && results.pinRestored &&
+      results.captureToggleRow && results.textToggleFlipped && results.shotToggleFlipped && results.textToggleTooltipTracks && results.shotToggleTooltipTracks && results.captureRestored &&
       results.dockSearch && results.searchRows >= 1 && results.searchOpensNote && results.searchClearBtn && results.searchCleared &&
       results.subjectChip && results.subjectPop && results.subjectOptions >= 1 && results.manageLink &&
       results.titleCommitted && results.noteStar && results.starToggles && results.starRestored &&
