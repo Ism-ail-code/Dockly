@@ -470,8 +470,12 @@ export function DockApp() {
       e.preventDefault();
       const startX = e.screenX;
       const startY = e.screenY;
-      const startW = cfg.width;
-      const startH = cfg.height;
+      // Anchor the drag to the LIVE window size: cfg.width/height can be 0
+      // ("auto" full-height mode) or momentarily stale while a dock:state
+      // broadcast is in flight — both made the first vertical drag snap to
+      // the minimum height instead of tracking the cursor.
+      const startW = cfg.width > 0 ? cfg.width : window.innerWidth;
+      const startH = cfg.height > 0 ? cfg.height : window.innerHeight;
       setDragActive(true);
       const onMove = (ev: PointerEvent) => {
         const dx = ev.screenX - startX;
