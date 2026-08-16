@@ -250,9 +250,9 @@ const E2E_SCRIPT = `(async () => {
     await click('.onboarding-cta');
     await click('.onboarding-cta');
     const ctaFinalLabel = $('.onboarding-cta').textContent.trim();
-    await click('.onboarding-cta');
-    await waitFor('.dashboard');
-    // The intro no longer creates subjects, so seed the tour's set here.
+    // The intro no longer creates subjects, so seed the tour's set here —
+    // BEFORE the final click, because boot() reads subjects on finish and
+    // the dashboard renders whatever it fetched.
     const seeds = [
       { name: 'Mathematics', icon: 'calculator', color: 'indigo' },
       { name: 'Physics', icon: 'atom', color: 'violet' },
@@ -262,6 +262,8 @@ const E2E_SCRIPT = `(async () => {
       { name: 'Computer Science', icon: 'code', color: 'sky' },
     ];
     for (const s of seeds) await window.nock.subjects.create(s);
+    await click('.onboarding-cta');
+    await waitFor('.dashboard');
     await sleep(400);
     const subjectCards = $$('.subject-card').length;
     const pickCards = $$('.pick-card').length;
@@ -1290,7 +1292,7 @@ const DOCK_FULL_SCRIPT = `(async () => {
       doc.focus();
       document.execCommand('insertText', false, 'dock toolbar text ');
       await sleep(200);
-      const tips = ['Heading 1', 'Heading 2', 'Bold', 'Italic', 'Bulleted list', 'Numbered list', 'Checklist', 'Quote', 'Code block'];
+      const tips = ['Heading 1 — big section title', 'Heading 2 — sub-section title', 'Bold — make text heavier', 'Italic — slant text for emphasis', 'Bulleted list — add bullet points', 'Numbered list — add steps or order', 'Checklist — track tasks to do', 'Quote — highlight a quotation', 'Code block — show code neatly'];
       const toggles = {};
       for (const tip of tips) {
         const btn = $$('.dock-ttb').find((b) => (b.dataset.tooltip ?? '') === tip);
@@ -1429,14 +1431,16 @@ const DOCK_FULL_SCRIPT = `(async () => {
       }
       hoverEl(el);
       let shown = false;
-      for (let i = 0; i < 12 && !shown; i++) {
-        await sleep(120);
+      let polls = 0;
+      for (let i = 0; i < 20 && !shown; i++) {
+        await sleep(100);
+        polls++;
         const t = $('.tooltip.show');
         shown = !!t && (t.textContent ?? '').trim() === tip;
       }
       tooltips[tip] = shown;
       results.tooltipDiag = results.tooltipDiag ?? {};
-      if (!shown) results.tooltipDiag[tip] = { connected: el.isConnected, tipEls: $$('.dock-ttb').length, tooltipText: $('.tooltip')?.textContent ?? null };
+      if (!shown) results.tooltipDiag[tip] = { connected: el.isConnected, polls, tipEls: $$('.dock-ttb').length, tooltipText: $('.tooltip')?.textContent ?? null };
       hoverAway(el);
       await sleep(60);
     }
