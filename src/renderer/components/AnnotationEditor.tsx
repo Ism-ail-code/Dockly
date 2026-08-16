@@ -60,17 +60,17 @@ const ALPHA: Record<Tool, number> = {
   text: 1, blur: 0.9, crop: 1, pan: 1,
 };
 
-const TOOLS: { id: Tool; icon: typeof Pen; label: string }[] = [
-  { id: 'pen', icon: Pen, label: 'Pen' },
-  { id: 'pencil', icon: Pencil, label: 'Pencil' },
-  { id: 'highlighter', icon: Highlighter, label: 'Highlighter' },
-  { id: 'arrow', icon: ArrowRight, label: 'Arrow' },
-  { id: 'rect', icon: Square, label: 'Rectangle' },
-  { id: 'ellipse', icon: Circle, label: 'Circle' },
-  { id: 'line', icon: Minus, label: 'Line' },
-  { id: 'text', icon: Type, label: 'Text' },
-  { id: 'blur', icon: Eraser, label: 'Blur' },
-  { id: 'crop', icon: Crop, label: 'Crop' },
+const TOOLS: { id: Tool; icon: typeof Pen; label: string; tip: string }[] = [
+  { id: 'pen', icon: Pen, label: 'Pen', tip: 'Pen — draw precise freehand annotations' },
+  { id: 'pencil', icon: Pencil, label: 'Pencil', tip: 'Pencil — sketch with soft pencil lines' },
+  { id: 'highlighter', icon: Highlighter, label: 'Highlighter', tip: 'Highlighter — highlight important parts of screenshots' },
+  { id: 'arrow', icon: ArrowRight, label: 'Arrow', tip: 'Arrow — point to something important' },
+  { id: 'rect', icon: Square, label: 'Rectangle', tip: 'Rectangle — box off a region' },
+  { id: 'ellipse', icon: Circle, label: 'Circle', tip: 'Circle — surround an area' },
+  { id: 'line', icon: Minus, label: 'Line', tip: 'Line — draw straight lines' },
+  { id: 'text', icon: Type, label: 'Text', tip: 'Text — add typed labels' },
+  { id: 'blur', icon: Eraser, label: 'Blur', tip: 'Blur — hide sensitive details' },
+  { id: 'crop', icon: Crop, label: 'Crop', tip: 'Crop — trim the screenshot edges' },
 ];
 
 export function AnnotationEditor() {
@@ -426,7 +426,7 @@ export function AnnotationEditor() {
       {/* tool rail */}
       <div className="annotate-rail">
         {TOOLS.map((t) => (
-          <button key={t.id} className={`annotate-tool${tool === t.id ? ' active' : ''}`} onClick={() => pickTool(t.id)} data-tooltip={t.label} data-tooltip-side="right">
+          <button key={t.id} className={`annotate-tool${tool === t.id ? ' active' : ''}`} onClick={() => pickTool(t.id)} data-tooltip={t.tip} data-tooltip-side="right">
             <t.icon size={17} />
           </button>
         ))}
@@ -439,20 +439,20 @@ export function AnnotationEditor() {
           Annotate screenshot
         </div>
         <div className="annotate-top-right">
-          <button className="btn btn-ghost btn-icon" onClick={undo} disabled={ops.length === 0} data-tooltip="Undo">
+          <button className="btn btn-ghost btn-icon" onClick={undo} disabled={ops.length === 0} data-tooltip="Undo — revert your previous edit">
             <Undo2 size={15} />
           </button>
-          <button className="btn btn-ghost btn-icon" onClick={redoAction} disabled={redo.length === 0} data-tooltip="Redo">
+          <button className="btn btn-ghost btn-icon" onClick={redoAction} disabled={redo.length === 0} data-tooltip="Redo — restore the undone edit">
             <Redo2 size={15} />
           </button>
           <div className="annotate-sep" />
-          <button className="btn btn-ghost btn-icon" onClick={() => { setZoom((z) => z * 1.25); }} data-tooltip="Zoom in">
+          <button className="btn btn-ghost btn-icon" onClick={() => { setZoom((z) => z * 1.25); }} data-tooltip="Zoom in — magnify the screenshot">
             <ZoomIn size={15} />
           </button>
-          <button className="btn btn-ghost btn-icon" onClick={() => { setZoom((z) => z / 1.25); }} data-tooltip="Zoom out">
+          <button className="btn btn-ghost btn-icon" onClick={() => { setZoom((z) => z / 1.25); }} data-tooltip="Zoom out — shrink the view">
             <ZoomOut size={15} />
           </button>
-          <button className="btn btn-ghost btn-icon" onClick={() => { setZoom(fitScale); setPan({ x: 0, y: 0 }); }} data-tooltip="Fit screen">
+          <button className="btn btn-ghost btn-icon" onClick={() => { setZoom(fitScale); setPan({ x: 0, y: 0 }); }} data-tooltip="Fit screen — show the whole screenshot">
             <MousePointer2 size={15} />
           </button>
           <div className="annotate-sep" />
@@ -472,7 +472,7 @@ export function AnnotationEditor() {
               key={c}
               className={`color-dot${color === c ? ' active' : ''}`}
               style={{ background: c, border: c === '#ffffff' ? '1px solid var(--border-strong)' : 'none' }}
-              data-tooltip="Color"
+              data-tooltip="Color — pick the stroke color"
               onClick={() => setColor(c)}
             />
           ))}
@@ -483,7 +483,7 @@ export function AnnotationEditor() {
               key={i}
               className={`size-dot${sizeIdx === i ? ' active' : ''}`}
               onClick={() => setSizeIdx(i)}
-              data-tooltip="Stroke size"
+              data-tooltip="Size — adjust the stroke thickness"
               style={{ width: Math.min(22, 6 + s), height: Math.min(22, 6 + s) }}
             />
           ))}

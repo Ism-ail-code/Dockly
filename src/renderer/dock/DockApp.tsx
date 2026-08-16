@@ -567,7 +567,7 @@ export function DockApp() {
                 <Eye size={12} />
               </button>
             )}
-            <button className="dock-btn" onClick={toggleCollapse} data-tooltip="Collapse">
+            <button className="dock-btn" onClick={toggleCollapse} data-tooltip="Collapse — tuck the dock into a slim rail">
               {innerEdge ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
             </button>
             <button className="dock-btn" onClick={() => void window.nock.dock.close()} data-tooltip="Close Nock">
@@ -672,63 +672,63 @@ export function DockApp() {
                     <button
                       className={`dock-ttb${editor?.isActive('heading', { level: 1 }) ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleHeading({ level: 1 }).run()}
-                      data-tooltip="Heading 1"
+                      data-tooltip="Heading 1 — big section title"
                     >
                       <Heading1 size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('heading', { level: 2 }) ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleHeading({ level: 2 }).run()}
-                      data-tooltip="Heading 2"
+                      data-tooltip="Heading 2 — sub-section title"
                     >
                       <Heading2 size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('bold') ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleBold().run()}
-                      data-tooltip="Bold"
+                      data-tooltip="Bold — make text heavier"
                     >
                       <Bold size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('italic') ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleItalic().run()}
-                      data-tooltip="Italic"
+                      data-tooltip="Italic — slant text for emphasis"
                     >
                       <Italic size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('bulletList') ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                      data-tooltip="Bulleted list"
+                      data-tooltip="Bulleted list — add bullet points"
                     >
                       <List size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('orderedList') ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleOrderedList().run()}
-                      data-tooltip="Numbered list"
+                      data-tooltip="Numbered list — add steps or order"
                     >
                       <ListOrdered size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('taskList') ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleTaskList().run()}
-                      data-tooltip="Checklist"
+                      data-tooltip="Checklist — track tasks to do"
                     >
                       <CheckSquare size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('blockquote') ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleBlockquote().run()}
-                      data-tooltip="Quote"
+                      data-tooltip="Quote — highlight a quotation"
                     >
                       <Quote size={13} />
                     </button>
                     <button
                       className={`dock-ttb${editor?.isActive('codeBlock') ? ' active' : ''}`}
                       onClick={() => editor?.chain().focus().toggleCodeBlock().run()}
-                      data-tooltip="Code block"
+                      data-tooltip="Code block — show code neatly"
                     >
                       <Code size={13} />
                     </button>
@@ -814,7 +814,7 @@ export function DockApp() {
               <button
                 className={`dock-btn dock-more-btn${moreMenu ? ' on' : ''}`}
                 onClick={() => setMoreMenu((v) => !v)}
-                data-tooltip="More options"
+                data-tooltip="More options — lock, focus and minimize"
                 aria-expanded={moreMenu}
                 aria-label="More options"
               >
@@ -855,6 +855,7 @@ export function DockApp() {
             <div
               className={`dock-resize ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}
               onPointerDown={(e) => startResize(e, 'inner')}
+              data-tooltip="Resize dock — drag to change width"
             >
               <GripHorizontal size={12} />
             </div>
@@ -862,21 +863,25 @@ export function DockApp() {
               <div
                 className={`dock-resize-t${dragActive ? ' active' : ''}`}
                 onPointerDown={(e) => startResize(e, 'top')}
+                data-tooltip="Resize height — drag the top edge"
               />
             )}
             <div
               className={`dock-resize-b${dragActive ? ' active' : ''}`}
               onPointerDown={(e) => startResize(e, 'bottom')}
+              data-tooltip="Resize height — drag the bottom edge"
             />
             {cfg.topEdgeFree && (
               <div
                 className={`dock-resize-tc ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}
                 onPointerDown={(e) => startResize(e, 'top-inner')}
+                data-tooltip="Resize dock — drag to change width and height"
               />
             )}
             <div
               className={`dock-resize-bc ${innerEdge ? 'left' : 'right'}${dragActive ? ' active' : ''}`}
               onPointerDown={(e) => startResize(e, 'bottom-inner')}
+              data-tooltip="Resize dock — drag to change width and height"
             />
           </>
         )}

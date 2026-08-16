@@ -479,7 +479,7 @@ const DOCK_UI_SCRIPT = `(async () => {
   }
 
   // 2) collapse via the header button
-  const collapseBtn = $$('.dock-btn').find((b) => (b.dataset.tooltip ?? '') === 'Collapse');
+  const collapseBtn = $$('.dock-btn').find((b) => (b.dataset.tooltip ?? '') === 'Collapse — tuck the dock into a slim rail');
   results.collapseBtnFound = !!collapseBtn;
   if (collapseBtn) click(collapseBtn);
   await sleep(700);
@@ -1304,7 +1304,7 @@ const DOCK_FULL_SCRIPT = `(async () => {
     }
 
     // footer: the More (…) menu holds lock / focus / minimize
-    const moreBtn = () => $$('.dock-btn').find((b) => (b.dataset.tooltip ?? '') === 'More options');
+    const moreBtn = () => $$('.dock-btn').find((b) => (b.dataset.tooltip ?? '') === 'More options — lock, focus and minimize');
     const moreItem = (tip) => $$('.dock-more-item').find((b) => (b.dataset.tooltip ?? '') === tip);
     const openMore = async () => {
       let tries = 0;
@@ -1359,7 +1359,7 @@ const DOCK_FULL_SCRIPT = `(async () => {
     // hover — the small dock buttons are only usable if their labels appear.
     await ensureExpanded();
     const tooltips = {};
-    const widgetSel = '.dock-btn, .dock-ttb, .dock-subject-chip, .dock-recents-toggle, .dock-note-star';
+    const widgetSel = '.dock-btn, .dock-ttb, .dock-subject-chip, .dock-recents-toggle, .dock-note-star, .dock-resize, .dock-resize-t, .dock-resize-b, .dock-resize-tc, .dock-resize-bc';
     const widgets = $$(widgetSel);
     results.tooltipState = {
       dockCls: $('.dock')?.className ?? null,
@@ -1387,7 +1387,7 @@ const DOCK_FULL_SCRIPT = `(async () => {
       const tip = el.dataset.tooltip;
       if (!tip) continue;
       if (!el.isConnected) {
-        const live = $$('.dock-btn, .dock-ttb, .dock-subject-chip, .dock-recents-toggle, .dock-note-star').find((b) => (b.dataset.tooltip ?? '') === tip);
+        const live = $$(widgetSel).find((b) => (b.dataset.tooltip ?? '') === tip);
         if (!live) { tooltips[tip] = 'stale'; continue; }
         el = live;
       }
