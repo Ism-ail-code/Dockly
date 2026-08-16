@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nock — Notes that dock beside your work</title>
+<meta name="description" content="Nock for Windows — copy anything while you study and it lands instantly in an always-available note. Free, offline, private.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%236366f1'/%3E%3Ctext x='32' y='44' font-family='Segoe UI, sans-serif' font-size='36' font-weight='700' fill='%23fff' text-anchor='middle'%3EN%3C/text%3E%3C/svg%3E">
+<style>
+  :root {
+    --accent: #6366f1;
+    --accent-deep: #4f46e5;
+    --accent-soft: rgba(99, 102, 241, 0.12);
+    --bg: #f3f4f8;
+    --surface: #ffffff;
+    --ink-1: #10131b;
+    --ink-2: #5b6272;
+    --ink-3: #8b91a0;
+    --border: rgba(16, 24, 40, 0.10);
+    --font: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --r-lg: 18px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--ink-1);
+    -webkit-font-smoothing: antialiased;
+    line-height: 1.55;
+  }
+  .page {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: 28px 24px 56px;
+  }
+
+  /* ---------- header ---------- */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink-1); }
+  .mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), #818cf8);
+    color: #fff; font-weight: 700; font-size: 19px;
+    display: grid; place-items: center;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.35);
+  }
+  .brand-name { font-weight: 650; font-size: 17px; letter-spacing: -0.01em; }
+  .pill {
+    font-size: 12.5px; font-weight: 600; color: var(--accent-deep);
+    background: var(--accent-soft); border: 1px solid rgba(99, 102, 241, 0.25);
+    padding: 4px 10px; border-radius: 999px;
+  }
+
+  /* ---------- hero ---------- */
+  .hero { text-align: center; padding: 64px 0 40px; }
+  h1 {
+    font-size: clamp(34px, 5.4vw, 52px);
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    line-height: 1.12;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  h1 .accent { color: var(--accent-deep); }
+  .sub {
+    margin: 18px auto 0;
+    max-width: 560px;
+    color: var(--ink-2);
+    font-size: 17.5px;
+  }
+
+  /* ---------- CTA ---------- */
+  .cta { margin-top: 36px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: linear-gradient(135deg, var(--accent), #4f46e5);
+    color: #fff; text-decoration: none;
+    font-size: 17px; font-weight: 650;
+    padding: 16px 34px; border-radius: 14px;
+    box-shadow: 0 10px 28px rgba(99, 102, 241, 0.38), inset 0 1px 0 rgba(255,255,255,0.18);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .btn:hover { transform: translateY(-2px); box-shadow: 0 14px 34px rgba(99, 102, 241, 0.45); }
+  .btn:active { transform: translateY(0); }
+  .btn svg { flex-shrink: 0; }
+  .meta { font-size: 13px; color: var(--ink-3); }
+  .alt {
+    font-size: 14px; color: var(--ink-2);
+  }
+  .alt a { color: var(--accent-deep); text-decoration: none; font-weight: 600; }
+  .alt a:hover { text-decoration: underline; }
+
+  /* ---------- smart screen note ---------- */
+  .shield {
+    display: inline-flex; align-items: flex-start; gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 14px 18px;
+    max-width: 620px;
+    text-align: left;
+    font-size: 14px;
+    color: var(--ink-2);
+    box-shadow: 0 2px 10px rgba(16, 24, 40, 0.05);
+  }
+  .shield svg { flex-shrink: 0; margin-top: 2px; }
+  .shield b { color: var(--ink-1); font-weight: 650; }
+
+  /* ---------- app mockup ---------- */
+  .stage { position: relative; margin-top: 72px; }
+  .glow {
+    position: absolute; inset: -8% -6% auto;
+    height: 70%;
+    background: radial-gradient(ellipse at 50% 0%, rgba(99, 102, 241, 0.16), transparent 70%);
+    pointer-events: none;
+  }
+  .window {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 30px 70px rgba(16, 24, 40, 0.16), 0 2px 8px rgba(16, 24, 40, 0.05);
+    overflow: hidden;
+  }
+  .win-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    background: #fafbfd;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .win-title { flex: 1; text-align: center; font-size: 12.5px; color: var(--ink-3); }
+  .win-body { display: flex; min-height: 430px; }
+
+  /* dock rail */
+  .dock-rail {
+    width: 64px; border-right: 1px solid var(--border);
+    background: #f7f8fb;
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    padding: 16px 0;
+  }
+  .dock-ico {
+    width: 36px; height: 36px; border-radius: 11px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    display: grid; place-items: center;
+    color: var(--ink-3);
+  }
+  .dock-ico.on { background: var(--accent-soft); border-color: rgba(99,102,241,0.35); color: var(--accent-deep); }
+  .dock-ico.mini { width: 12px; height: 12px; border-radius: 4px; background: var(--ink-3); border: none; opacity: 0.45; }
+
+  /* editor */
+  .editor { flex: 1; padding: 30px 36px 26px; }
+  .crumb { font-size: 12.5px; color: var(--ink-3); margin-bottom: 6px; }
+  .note-title { font-size: 22px; font-weight: 700; letter-spacing: -0.015em; margin-bottom: 18px; }
+  .p { font-size: 14.5px; color: var(--ink-2); margin-bottom: 12px; max-width: 46ch; }
+  .hl { background: rgba(250, 204, 21, 0.45); border-radius: 3px; padding: 0 3px; color: var(--ink-1); }
+  .task { display: flex; align-items: center; gap: 9px; font-size: 14.5px; color: var(--ink-2); margin-bottom: 8px; }
+  .task input[type=checkbox] {
+    appearance: none; width: 16px; height: 16px; border-radius: 5px;
+    border: 1.5px solid rgba(16,24,40,0.25); cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .task input[type=checkbox]:checked { background: var(--accent); border-color: var(--accent); }
+  .task input[type=checkbox]:checked::after {
+    content: ""; width: 8px; height: 4px;
+    border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+    transform: rotate(-45deg) translateY(-1px);
+  }
+  .task.done span { text-decoration: line-through; color: var(--ink-3); }
+  .shot-box {
+    margin-top: 16px;
+    height: 110px; border-radius: 12px;
+    background: linear-gradient(135deg, #eef0ff, #f6f7fb);
+    border: 1px dashed rgba(99, 102, 241, 0.4);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    color: var(--ink-3); font-size: 12.5px;
+  }
+
+  /* capture toast chip */
+  .chip {
+    position: absolute; right: -14px; bottom: 26px;
+    display: flex; align-items: center; gap: 9px;
+    background: var(--ink-1); color: #fff;
+    font-size: 13px; font-weight: 600;
+    padding: 11px 16px; border-radius: 12px;
+    box-shadow: 0 12px 28px rgba(16, 24, 40, 0.28);
+    animation: float 4s ease-in-out infinite;
+  }
+  .chip .ok {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: #22c55e; display: grid; place-items: center;
+  }
+  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+  /* ---------- footer ---------- */
+  footer {
+    margin-top: 64px; text-align: center;
+    font-size: 13px; color: var(--ink-3);
+  }
+  footer a { color: var(--ink-3); text-decoration: none; border-bottom: 1px solid rgba(16,24,40,0.2); }
+  footer a:hover { color: var(--accent-deep); }
+
+  @media (max-width: 720px) {
+    .hero { padding: 44px 0 28px; }
+    .stage { margin-top: 56px; }
+    .win-body { min-height: 360px; }
+    .editor { padding: 22px 20px 18px; }
+    .chip { right: 8px; bottom: 12px; font-size: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <a class="brand" href="#">
+      <span class="mark">N</span>
+      <span class="brand-name">Nock</span>
+    </a>
+    <span class="pill" id="pill">v1.0.0</span>
+  </header>
+
+  <main>
+    <section class="hero">
+      <h1>Notes that <span class="accent">dock</span> beside your work.</h1>
+      <p class="sub">
+        Copy anything while you study and it lands instantly in an always-available note —
+        next to your window, not buried in a tab. Free, offline, private.
+      </p>
+
+      <div class="cta">
+        <a class="btn" id="dl-installer" href="https://github.com/Ism-ail-code/Dockly/releases/download/v1.0.0/Nock-Setup-1.0.0.exe?download=1">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Download Nock for Windows
+        </a>
+        <div class="meta"><span id="ver">v1.0.0</span> &middot; Windows 10 / 11 &middot; 64-bit &middot; 95 MB &middot; Free</div>
+        <div class="alt"><a id="dl-portable" href="https://github.com/Ism-ail-code/Dockly/releases/download/v1.0.0/Nock-1.0.0-portable.exe?download=1">Portable build</a> &mdash; no install needed</div>
+      </div>
+
+      <div class="shield" style="margin: 30px auto 0;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span><b>Windows may show &ldquo;Windows protected your PC&rdquo;</b> &mdash; that&rsquo;s just SmartScreen meeting a new app. Click <b>More info &rarr; Run anyway</b> and Nock opens.</span>
+      </div>
+    </section>
+
+    <section class="stage" aria-label="Nock in action">
+      <div class="glow" aria-hidden="true"></div>
+      <div class="window">
+        <div class="win-bar">
+          <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+          <span class="win-title">Nock &mdash; Cell Biology &middot; Chapter 3</span>
+        </div>
+        <div class="win-body">
+          <div class="dock-rail" aria-hidden="true">
+            <span class="dock-ico on">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="2"/></svg>
+            </span>
+            <span class="dock-ico">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </span>
+            <span class="dock-ico">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L6 15"/></svg>
+            </span>
+            <span class="dock-ico mini"></span>
+            <span class="dock-ico mini"></span>
+          </div>
+          <div class="editor">
+            <div class="crumb">Cell Biology &middot; Chapter 3</div>
+            <div class="note-title">Membrane Transport</div>
+            <p class="p">Transport across the membrane is either <b>passive</b>, driven by the gradient, or <b>active</b>, powered by ATP.</p>
+            <div class="task"><input type="checkbox" checked><span>Carrier proteins change shape during transport</span></div>
+            <div class="task"><input type="checkbox" checked><span>Ion channels are selective and fast</span></div>
+            <div class="task"><input type="checkbox"><span>Review exocytosis vs endocytosis</span></div>
+            <div class="shot-box">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+              Screenshot from your clipboard lands here
+            </div>
+          </div>
+        </div>
+        <div class="chip">
+          <span class="ok">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          </span>
+          Copied text captured
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Nock &middot; local-first &middot; private &middot; offline &middot; <a href="https://github.com/Ism-ail-code/Dockly">open source</a>
+  </footer>
+
+</div>
+
+<script>
+  // ═══ Release config — the ONLY place to edit for each new release ═══
+  // For v1.1.0 just change `version` to '1.1.0' (asset names and tag are
+  // derived automatically: Nock-Setup-1.1.0.exe, tag v1.1.0).
+  const NOCK_RELEASE = {
+    version: '1.0.0',             // e.g. '1.1.0' for the next release
+    repo: 'Ism-ail-code/Dockly',  // GitHub owner/repo
+  };
+  (() => {
+    const v = NOCK_RELEASE.version;
+    const base = 'https://github.com/' + NOCK_RELEASE.repo + '/releases/download/v' + v;
+    document.getElementById('dl-installer').href = base + '/Nock-Setup-' + v + '.exe?download=1';
+    document.getElementById('dl-portable').href = base + '/Nock-' + v + '-portable.exe?download=1';
+    document.getElementById('pill').textContent = 'v' + v;
+    document.getElementById('ver').textContent = 'v' + v;
+  })();
+</script>
+</body>
+</html>
