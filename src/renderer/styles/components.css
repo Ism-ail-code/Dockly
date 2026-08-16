@@ -482,6 +482,20 @@ button:focus-visible,
   gap: var(--sp-2);
   margin-top: var(--sp-5);
 }
+.subject-create-modal .modal-sub {
+  margin-bottom: var(--sp-3);
+}
+.subject-create-colors {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+.subject-create-colors .accent-row {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
 
 /* ---------- Empty state ---------- */
 .empty {

@@ -13,6 +13,16 @@ import {
 import { useApp } from '@/app/store';
 import { EmptyState, SubjectIcon, timeAgo, useNow } from '@/components/ui';
 import { useToast } from '@/components/ui';
+import { ACCENT_COLORS } from '@shared/defaults';
+import type { AccentColor } from '@shared/types';
+
+const SUBJECT_ICON = 'layers';
+
+const ACCENT_HEX: Record<AccentColor, string> = {
+  indigo: '#6366f1', violet: '#8b5cf6', sky: '#0ea5e9', teal: '#14b8a6',
+  emerald: '#10b981', amber: '#f5a90b', orange: '#f97316', rose: '#f43f5e',
+  pink: '#ec4899', slate: '#64748b',
+};
 
 export function Dashboard() {
   const subjects = useApp((s) => s.subjects);
@@ -27,6 +37,9 @@ export function Dashboard() {
   const toast = useToast();
   const now = useNow(30000);
   const [today, setToday] = useState<{ notes: number; shots: number; edits: number } | null>(null);
+  const [subjectModal, setSubjectModal] = useState(false);
+  const [subjectName, setSubjectName] = useState('');
+  const [subjectColor, setSubjectColor] = useState<AccentColor>(ACCENT_COLORS[subjects.length % ACCENT_COLORS.length].name);
 
   useEffect(() => {
     if (!settings.dailyStats) {
@@ -53,6 +66,22 @@ export function Dashboard() {
   };
 
   const onTagClick = (tag: string) => setSearchOpen(tag);
+
+  const openSubjectModal = () => {
+    setSubjectName('');
+    setSubjectColor(ACCENT_COLORS[subjects.length % ACCENT_COLORS.length].name);
+    setSubjectModal(true);
+  };
+
+  const createSubject = async () => {
+    const name = subjectName.trim();
+    if (!name) return;
+    await window.nock.subjects.create({ name, icon: SUBJECT_ICON, color: subjectColor });
+    await useApp.getState().refreshSubjects();
+    setSubjectModal(false);
+    setSubjectName('');
+    toast.success(`Subject "${name}" created`);
+  };
 
   return (
     <div className="dashboard view-enter">
@@ -133,6 +162,12 @@ export function Dashboard() {
             icon={StickyNote}
             title="Start with a subject"
             sub="Create Mathematics, Physics, English — anything you study. Each subject holds its own notes."
+            cta={
+              <button className="btn btn-primary" onClick={openSubjectModal}>
+                <Plus size={14} />
+                Create your first subject
+              </button>
+            }
           />
         ) : (
           <div className="subject-grid stagger">
@@ -156,14 +191,14 @@ export function Dashboard() {
             ))}
             <button
               className="subject-card subject-add card card-hover"
-              onClick={() => useApp.getState().setView('settings')}
+              onClick={openSubjectModal}
               data-tooltip="Add a new subject"
             >
               <div className="subject-add-plus">
                 <Plus size={18} />
               </div>
               <div className="subject-name t-display">New subject</div>
-              <div className="subject-meta t-sub">Add a subject in settings</div>
+              <div className="subject-meta t-sub">Create a subject right here</div>
             </button>
           </div>
         )}
@@ -218,6 +253,46 @@ export function Dashboard() {
             <ArchiveRestore size={14} />
             Archive
           </button>
+        </div>
+      )}
+
+      {subjectModal && (
+        <div className="modal-backdrop" onMouseDown={(e) => { if (e.target === e.currentTarget) setSubjectModal(false); }}>
+          <div className="modal subject-create-modal" role="dialog" aria-label="Create subject">
+            <div className="modal-title t-display">Create a subject</div>
+            <div className="modal-sub t-sub">A subject holds its own notes — Mathematics, Physics, English, anything.</div>
+            <input
+              className="input subject-create-input"
+              placeholder="Subject name"
+              value={subjectName}
+              autoFocus
+              onChange={(e) => setSubjectName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && subjectName.trim()) void createSubject(); }}
+            />
+            <div className="subject-create-colors">
+              <span className="t-sub">Color</span>
+              <div className="accent-row">
+                {ACCENT_COLORS.map((c) => (
+                  <button
+                    key={c.name}
+                    className={`accent-dot${subjectColor === c.name ? ' active' : ''}`}
+                    style={{ background: ACCENT_HEX[c.name] }}
+                    data-tooltip={c.label}
+                    onClick={() => setSubjectColor(c.name)}
+                    aria-label={c.label}
+                  />
+                ))}
+              </div>
+            </div>
+            <div className="modal-foot">
+              <button className="btn subject-create-cancel" onClick={() => setSubjectModal(false)}>
+                Cancel
+              </button>
+              <button className="btn btn-primary subject-create-submit" onClick={() => void createSubject()} disabled={!subjectName.trim()}>
+                Create subject
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

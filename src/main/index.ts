@@ -632,10 +632,24 @@ const FULL_SCRIPT = `(async () => {
     if (banner) { clickEl(banner); await sleep(300); dash.captureToast = toastText().includes('Win + Shift + S'); }
     const addCard = $('.subject-add');
     dash.subjectAddCard = !!addCard;
-    if (addCard) { clickEl(addCard); await waitFor('.settings-view', 8000, '.settings-view@subject-add'); await clickBack(); await waitFor('.dashboard', 8000, '.dashboard-after-settings'); dash.subjectAddGoesToSettings = true; }
+    if (addCard) {
+      clickEl(addCard); await sleep(300);
+      dash.subjectAddModal = !!$('.subject-create-modal');
+      const input = $('.subject-create-input');
+      dash.subjectInputAutoFocus = document.activeElement === input;
+      dash.subjectCreateDisabled = $('.subject-create-submit')?.disabled === true;
+      if (input) { setInput(input, 'E2E Dash Subject'); await sleep(200); }
+      dash.subjectCreateEnabled = $('.subject-create-submit')?.disabled === false;
+      clickEl($('.subject-create-submit')); await sleep(700);
+      const created = (await window.nock.subjects.list()).find((s) => s.name === 'E2E Dash Subject');
+      dash.subjectCreated = !!created;
+      dash.subjectCardAppears = !!$('.subject-card') && $$('.subject-card').some((c) => (c.textContent ?? '').includes('E2E Dash Subject'));
+      if (created) await window.nock.subjects.delete(created.id);
+      await sleep(400);
+    }
     dash.quickNew = !!$('.dash-quick button[data-tooltip="New note (Ctrl+N)"]');
     dash.quickArchive = !!$('.dash-quick button[data-tooltip="View archived notes"]');
-    dash.ok = !!(dash.statPills >= 2 && dash.greeting && dash.captureBanner && dash.captureToast && dash.subjectAddCard && dash.subjectAddGoesToSettings && dash.quickNew && dash.quickArchive);
+    dash.ok = !!(dash.statPills >= 2 && dash.greeting && dash.captureBanner && dash.captureToast && dash.subjectAddCard && dash.subjectAddModal && dash.subjectInputAutoFocus && dash.subjectCreateDisabled && dash.subjectCreateEnabled && dash.subjectCreated && dash.subjectCardAppears && dash.quickNew && dash.quickArchive);
     results.dash = dash;
 
     // ================= EDITOR =================
