@@ -576,6 +576,50 @@ export function SettingsView() {
         </section>
       )}
 
+      {/* Help & Getting Started */}
+      {!searching && (
+        <section className="settings-section">
+          <div className="settings-section-title">
+            <GraduationCap size={15} />
+            Help & Getting Started
+          </div>
+          <div className="settings-row" style={{ border: 'none' }}>
+            <div className="settings-label">
+              <div className="settings-name">Your first note</div>
+              <div className="settings-desc">
+                Create a subject on the dashboard, open it, then press <Kbd>New note</Kbd>. Done.
+              </div>
+            </div>
+          </div>
+          <div className="settings-row" style={{ border: 'none' }}>
+            <div className="settings-label">
+              <div className="settings-name">Capture a screenshot</div>
+              <div className="settings-desc">
+                Press <Kbd>Win</Kbd>+<Kbd>Shift</Kbd>+<Kbd>S</Kbd> anywhere — the snip lands in your note at the cursor.
+              </div>
+            </div>
+          </div>
+          <div className="settings-row" style={{ border: 'none' }}>
+            <div className="settings-label">
+              <div className="settings-name">Pin a note to your screen</div>
+              <div className="settings-desc">
+                Open the dock from the tray icon and drag any note to a screen edge. It stays on top while you work.
+              </div>            </div>
+          </div>
+          <div className="settings-row" style={{ border: 'none' }}>
+            <div className="settings-label">
+              <div className="settings-name">Replay the welcome tour</div>
+              <div className="settings-desc">
+                See the four-step intro again — it only shows on first launch.
+              </div>
+            </div>
+            <button className="btn" onClick={() => void setSetting('onboarded', false)} data-tooltip="Replay the welcome tour">
+              Replay tour
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* About */}
       {!searching && (
         <section className="settings-section">

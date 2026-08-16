@@ -1052,6 +1052,9 @@ const FULL_SCRIPT = `(async () => {
 
     st.shortcutRows = $$('.shortcut-row').length;
     st.aboutShown = $$('.settings-name').some((n) => (n.textContent ?? '').includes('Nock v'));
+    st.helpSection = $$('.settings-section-title').some((t) => (t.textContent ?? '').includes('Help & Getting Started'));
+    st.helpRows = $$('.settings-section').find((s) => (s.textContent ?? '').includes('Help & Getting Started')) ? $$('.settings-row').filter((r) => ['Your first note', 'Capture a screenshot', 'Pin a note to your screen', 'Replay the welcome tour'].some((h) => (r.textContent ?? '').includes(h))).length : 0;
+    st.replayTourBtn = !!$('button[data-tooltip="Replay the welcome tour"]');
 
     // study/editor extras driven by settings
     st.studyTimerSet = await toggleTo('Study timer', true);
@@ -1087,7 +1090,7 @@ const FULL_SCRIPT = `(async () => {
     st.lineNumbersRestored = await toggleTo('Show line numbers', false);
     st.dailyStatsRestored = await toggleTo('Daily study statistics', false);
     await clickBack(); await waitFor('.dashboard', 8000, '.dashboard-after-settings3');
-    st.ok = !!(st.searchFilters && st.searchEmpty && st.clearSearchBtn && st.searchCleared && st.themeLight && st.themeMidnight && st.themeDark && st.accentEmerald && st.accentRestored && st.switchCount >= 19 && st.switchesToggleBack && st.presetApplied && st.sliderApplied && st.glassClear && st.glassFrosted && st.addDisabledWhenEmpty && st.addEnabledWhenFilled && st.subjectAdded && st.deleteSubjectModal && st.subjectDeleted && st.resetBtn && st.resetModal && st.resetCancelled && st.shortcutRows >= 10 && st.aboutShown && st.studyTimerSet && st.readingProgressSet && st.lineNumbersSet && st.dailyStatsSet && st.dailyStatsPill && st.studyTimerShown && st.readingProgressShown && st.lineNumbersShown && st.studyTimerRestored && st.readingProgressRestored && st.lineNumbersRestored && st.dailyStatsRestored);
+    st.ok = !!(st.searchFilters && st.searchEmpty && st.clearSearchBtn && st.searchCleared && st.themeLight && st.themeMidnight && st.themeDark && st.accentEmerald && st.accentRestored && st.switchCount >= 19 && st.switchesToggleBack && st.presetApplied && st.sliderApplied && st.glassClear && st.glassFrosted && st.addDisabledWhenEmpty && st.addEnabledWhenFilled && st.subjectAdded && st.deleteSubjectModal && st.subjectDeleted && st.resetBtn && st.resetModal && st.resetCancelled && st.shortcutRows >= 10 && st.aboutShown && st.helpSection && st.helpRows >= 4 && st.replayTourBtn && st.studyTimerSet && st.readingProgressSet && st.lineNumbersSet && st.dailyStatsSet && st.dailyStatsPill && st.studyTimerShown && st.readingProgressShown && st.lineNumbersShown && st.studyTimerRestored && st.readingProgressRestored && st.lineNumbersRestored && st.dailyStatsRestored);
     results.st = st;
 
     // ================= SEARCH OVERLAY + SHORTCUTS =================
