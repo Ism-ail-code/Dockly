@@ -321,15 +321,15 @@ function buildCategories(onReset: () => void): Category[] {
       {
         kind: 'toggle',
         key: 'autoInsertScreenshots',
-        title: 'Auto-insert screenshots',
-        desc: 'Win + Shift + S snips land in the active note automatically',
+        title: 'Automatic screenshot capture',
+        desc: 'Automatically add captured screenshots to your active note',
         keywords: 'screenshot snip insert capture clipboard',
       },
       {
         kind: 'toggle',
         key: 'autoCaptureText',
-        title: 'Capture copied text',
-        desc: 'Ctrl + C copies drop into the active note as text',
+        title: 'Automatic text capture',
+        desc: 'Automatically add copied text to your active note',
         keywords: 'text copy ctrl-c clipboard paste capture',
       },
       {

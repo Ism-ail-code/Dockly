@@ -17,12 +17,14 @@ import Placeholder from '@tiptap/extension-placeholder';
 import {
   ArrowUpRight,
   Bold,
+  Camera,
   Check,
   CheckSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
+  ClipboardCopy,
   Code,
   Eye,
   GripHorizontal,
@@ -554,7 +556,7 @@ export function DockApp() {
               </button>
             )}
             {!cfg.focusMode && (
-              <button className="dock-btn" onClick={() => openMain('dashboard')} data-tooltip="View and organize all your notes">
+              <button className="dock-btn dock-btn-library" onClick={() => openMain('dashboard')} data-tooltip="Library — return to your main notes library">
                 <LayoutDashboard size={13} />
               </button>
             )}
@@ -579,6 +581,32 @@ export function DockApp() {
             </button>
           </div>
         </div>
+
+        {/* capture quick toggles — live mirrors of the Clipboard settings */}
+        {!cfg.focusMode && (
+          <div className="dock-capture-row">
+            <button
+              className={`dock-capture-toggle${settings.autoCaptureText ? ' on' : ''}`}
+              onClick={() => void window.nock.settings.set('autoCaptureText', !settings.autoCaptureText)}
+              data-tooltip={settings.autoCaptureText ? 'Text Capture — automatically capture copied text' : 'Click to enable automatic text capture'}
+              aria-pressed={settings.autoCaptureText}
+            >
+              <ClipboardCopy size={11} />
+              <span className="dock-capture-label">Text</span>
+              <span className="dock-capture-state">{settings.autoCaptureText ? 'On' : 'Off'}</span>
+            </button>
+            <button
+              className={`dock-capture-toggle${settings.autoInsertScreenshots ? ' on' : ''}`}
+              onClick={() => void window.nock.settings.set('autoInsertScreenshots', !settings.autoInsertScreenshots)}
+              data-tooltip={settings.autoInsertScreenshots ? 'Screenshot Capture — automatically capture screenshots' : 'Click to enable automatic screenshot capture'}
+              aria-pressed={settings.autoInsertScreenshots}
+            >
+              <Camera size={11} />
+              <span className="dock-capture-label">Screenshot</span>
+              <span className="dock-capture-state">{settings.autoInsertScreenshots ? 'On' : 'Off'}</span>
+            </button>
+          </div>
+        )}
 
         {/* search */}
         {!cfg.focusMode && (

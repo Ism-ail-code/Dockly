@@ -197,6 +197,61 @@ body {
   background: var(--accent-hover);
   color: var(--accent-ink);
 }
+.dock-btn-library {
+  color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-ring);
+}
+.dock-btn-library:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+/* ---------- capture quick toggles ---------- */
+.dock-capture-row {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px;
+}
+.dock-capture-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1), border-color var(--dur-1), box-shadow var(--dur-1);
+}
+.dock-capture-toggle:hover {
+  background: var(--surface-3);
+  color: var(--text-1);
+  border-color: var(--border-strong);
+}
+.dock-capture-toggle.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+  color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent-ring);
+}
+.dock-capture-state {
+  font-size: 9.5px;
+  opacity: 0.75;
+}
+.dock-capture-toggle.on .dock-capture-state {
+  opacity: 1;
+  font-weight: 700;
+}
+.dock.narrow .dock-capture-label {
+  display: none;
+}
 
 /* ---------- translucent mode: floating controls ----------
    The background turns transparent, so each control grows its own subtle
@@ -223,6 +278,29 @@ body {
   border: none;
   color: var(--accent-ink);
   box-shadow: 0 2px 12px var(--accent-glow);
+}
+.dock[data-translucent="on"] .dock-btn-library {
+  background: color-mix(in srgb, var(--accent-soft) 80%, transparent);
+  border-color: var(--accent-ring);
+  box-shadow: inset 0 0 0 1px var(--accent-ring);
+}
+.dock[data-translucent="on"] .dock-btn-library:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 2px 10px var(--accent-glow);
+}
+.dock[data-translucent="on"] .dock-capture-toggle {
+  background: color-mix(in srgb, var(--surface-solid) 45%, transparent);
+  border-color: color-mix(in srgb, var(--border-strong) 55%, transparent);
+}
+.dock[data-translucent="on"] .dock-capture-toggle.on {
+  background: var(--accent-soft);
+  border-color: var(--accent-ring);
+}
+.dock[data-translucent="on"] .dock-capture-toggle:hover {
+  background: color-mix(in srgb, var(--surface-solid) 75%, transparent);
+  border-color: var(--accent-ring);
 }
 
 /* ---------- search ---------- */
