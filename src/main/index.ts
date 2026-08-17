@@ -276,12 +276,28 @@ const E2E_SCRIPT = `(async () => {
     await click('.onboarding-cta');
     await click('.onboarding-cta');
     await click('.onboarding-cta');
+    await click('.onboarding-cta');
+    // Now on the "Create Your Subjects" step — exercise the new UI: add a
+    // subject through the form, verify it lists, then seed the rest of the
+    // tour's set via the API (excluding the UI-created one) before Continue.
+    const onboardingSubjectStep = !!$('.onboarding-subject-input');
+    const backButtonExists = [...$$('button')].some((b) => b.textContent.trim() === 'Back');
+    const skipNowExists = !!$('.onboarding-skip');
     const ctaFinalLabel = $('.onboarding-cta').textContent.trim();
+    const subjectInput = await waitFor('.onboarding-subject-input');
+    const subjectValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
+    subjectValueSetter?.call(subjectInput, 'Mathematics');
+    subjectInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await click('.onboarding-subject-add');
+    await sleep(400);
+    const subjectAddedViaOnboarding = $$('.onboarding-subject-item .onboarding-subject-name').some(
+      (el) => el.textContent.trim() === 'Mathematics',
+    );
+    const removeButtonExists = !!$('.onboarding-subject-remove');
     // The intro no longer creates subjects, so seed the tour's set here —
     // BEFORE the final click, because boot() reads subjects on finish and
     // the dashboard renders whatever it fetched.
     const seeds = [
-      { name: 'Mathematics', icon: 'calculator', color: 'indigo' },
       { name: 'Physics', icon: 'atom', color: 'violet' },
       { name: 'Chemistry', icon: 'flask', color: 'teal' },
       { name: 'Biology', icon: 'leaf', color: 'emerald' },
@@ -395,6 +411,11 @@ const E2E_SCRIPT = `(async () => {
       onboardingDone: true,
       skipLink,
       ctaFinalLabel,
+      onboardingSubjectStep,
+      backButtonExists,
+      skipNowExists,
+      subjectAddedViaOnboarding,
+      removeButtonExists,
       onboardedSetting,
       subjectNames,
       subjectCards,
@@ -1090,7 +1111,8 @@ const FULL_SCRIPT = `(async () => {
     try {
       upd.section = $$('.settings-section-title').some((t) => (t.textContent ?? '').includes('Updates'));
       upd.autoToggle = !!swFor('Automatic updates');
-      upd.versionShown = ($$('.update-version code')[0]?.textContent ?? '').includes('1.0.0');
+      const currentVersion = (await window.nock.appInfo()).version;
+      upd.versionShown = ($$('.update-version code')[0]?.textContent ?? '').includes(currentVersion);
       const checkBtn = () => $('button[data-tooltip="Check the Nock GitHub releases for a newer version"]');
       upd.checkBtn = !!checkBtn();
 

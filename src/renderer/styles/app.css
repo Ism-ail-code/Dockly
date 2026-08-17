@@ -1682,6 +1682,104 @@
 .onboarding-footer svg {
   color: var(--ok);
 }
+.onboarding-subject-form {
+  display: flex;
+  gap: var(--sp-2);
+  width: min(360px, 100%);
+  margin-top: var(--sp-2);
+}
+.onboarding-subject-input {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text-1);
+  font-size: var(--t-13);
+  outline: none;
+  transition: border-color var(--dur-2), box-shadow var(--dur-2);
+}
+.onboarding-subject-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.onboarding-subject-input::placeholder {
+  color: var(--text-3);
+}
+.onboarding-subject-add {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.onboarding-subject-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: min(360px, 100%);
+  margin-top: var(--sp-2);
+  list-style: none;
+  padding: 0;
+}
+.onboarding-subject-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  animation: riseIn 0.3s var(--ease-out) both;
+}
+.onboarding-subject-name {
+  font-size: var(--t-13);
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.onboarding-subject-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: none;
+  border-radius: 7px;
+  background: none;
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background var(--dur-1), color var(--dur-1);
+}
+.onboarding-subject-remove:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.onboarding-nav {
+  display: flex;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+.onboarding-nav .btn {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 12px;
+}
+.onboarding-nav .btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.onboarding-nav .onboarding-cta {
+  margin-top: 0;
+}
 
 /* ---------- Annotation editor ---------- */
 .annotate-backdrop {
