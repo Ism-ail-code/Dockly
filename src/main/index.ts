@@ -27,6 +27,11 @@ if (
   app.setPath('userData', process.env.NOCK_SMOKE_USER_DATA);
 } else if (process.env.NOCK_PERF === '1' && process.env.NOCK_PERF_USER_DATA) {
   app.setPath('userData', process.env.NOCK_PERF_USER_DATA);
+} else if (process.env.NOCK_DEV_USER_DATA) {
+  // Optional opt-in dev profile: run the development build against its own
+  // user-data dir so dev data never mixes with production data. Unset by
+  // default — `npm start` uses the normal %APPDATA%/nock profile.
+  app.setPath('userData', process.env.NOCK_DEV_USER_DATA);
 }
 
 const gotLock = app.requestSingleInstanceLock();

@@ -21,3 +21,16 @@ Thumbs.db
 # Env
 .env
 .env.*
+
+# Databases (must never live in the repo)
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# User screenshots
+screenshots/
+
+# Session/dev logs
+session-log.md
