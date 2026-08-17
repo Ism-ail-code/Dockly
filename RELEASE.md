@@ -3,7 +3,7 @@
 ## Application
 
 - **Name:** Nock
-- **Version:** 1.0.0
+- **Version:** 1.1.0
 - **Supported Windows:** Windows 10 / 11, 64-bit
 - **Type:** Sticky-note-first note-taking desktop app (always-on-top dock + library)
 - **License:** MIT
@@ -27,21 +27,21 @@ Everything lands in `release/`:
 
 ```
 release/
-    Nock-Setup-1.0.0.exe        # installer (recommended)
-    Nock-1.0.0-portable.exe     # no-install portable build
+    Nock-Setup-1.1.0.exe        # installer (recommended)
+    Nock-1.1.0-portable.exe     # no-install portable build
     win-unpacked/Nock.exe       # the raw packaged executable
     checksums.txt               # SHA-256 of the installers
 ```
 
 ## Installing
 
-1. Download `Nock-Setup-1.0.0.exe`.
+1. Download `Nock-Setup-1.1.0.exe`.
 2. Double-click it (Windows SmartScreen may warn because the build is not
    code-signed — click **More info → Run anyway**).
 3. Choose install location and shortcuts, then **Install**.
 4. Launch **Nock** from the Start Menu or the desktop shortcut.
 
-The portable build (`Nock-1.0.0-portable.exe`) needs no install — just run it.
+The portable build (`Nock-1.1.0-portable.exe`) needs no install — just run it.
 
 ## Uninstalling
 

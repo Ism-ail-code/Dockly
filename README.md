@@ -6,10 +6,10 @@ A sticky-note-first note-taking desktop app for students, built with Electron, R
 
 Nock for Windows (10/11, 64-bit) — no Node.js, Python or other tools required.
 
-- **`Nock-Setup-1.0.0.exe`** — installer (recommended)
-- **`Nock-1.0.0-portable.exe`** — no-install portable build
+- **`Nock-Setup-1.1.0.exe`** — installer (recommended)
+- **`Nock-1.1.0-portable.exe`** — no-install portable build
 
-Grab the latest release from the [GitHub Releases](https://github.com/Ism-ail-code/Dockly/releases) page.
+Grab the latest release from the [GitHub Releases](https://github.com/Ism-ail-code/Nock/releases) page.
 
 > Not code-signed — if SmartScreen warns, click **More info → Run anyway**.
 
