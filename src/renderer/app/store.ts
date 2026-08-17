@@ -138,9 +138,11 @@ export const useApp = create<AppState>((set, get) => ({
   updateInstallPrompt: false,
 
   boot: async () => {
-    const settings = await window.nock.settings.get();
-    const subjects = await window.nock.subjects.list();
-    const dockState = await window.nock.dock.getState();
+    const [settings, subjects, dockState] = await Promise.all([
+      window.nock.settings.get(),
+      window.nock.subjects.list(),
+      window.nock.dock.getState(),
+    ]);
     get().applySettings(settings);
     set({ booted: true, subjects, dockState });
     await Promise.all([get().refreshRecents(), get().refreshFavorites(), get().refreshTags()]);
@@ -235,24 +237,18 @@ export const useApp = create<AppState>((set, get) => ({
   },
 
   refreshRecents: async () => {
-    const all = await window.nock.notes.list(undefined, false);
-    const recents = all
-      .filter((n) => !n.isFavorite)
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 6);
+    const recents = await window.nock.notes.listRecents(6, true);
     set({ recents });
   },
 
   refreshFavorites: async () => {
-    const all = await window.nock.notes.list(undefined, false);
-    set({ favorites: all.filter((n) => n.isFavorite).slice(0, 8) });
+    const favorites = await window.nock.notes.listFavorites();
+    set({ favorites });
   },
 
   refreshTags: async () => {
-    const all = await window.nock.notes.list(undefined, false);
-    const tagSet = new Set<string>();
-    for (const n of all) for (const t of n.tags) tagSet.add(t);
-    set({ tags: Array.from(tagSet).sort() });
+    const tags = await window.nock.notes.listTags();
+    set({ tags });
   },
 
   setDockState: (d) => set({ dockState: d }),

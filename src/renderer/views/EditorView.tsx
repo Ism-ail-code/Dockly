@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor, BubbleMenu } from '@tiptap/react';
+import { extractPreviewFromDoc } from '@shared/preview';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
@@ -178,7 +179,8 @@ export function EditorView() {
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
           if (!noteId) return;
-          void window.nock.notes.contentSave(noteId, editor.getJSON() as unknown as string);
+          const doc = editor.getJSON();
+          void window.nock.notes.contentSave(noteId, doc as unknown as string, extractPreviewFromDoc(doc));
           setDirty(false);
           setSaveState('saved');
           setTimeout(() => setSaveState('idle'), 1800);
@@ -283,7 +285,8 @@ export function EditorView() {
 
   const persistSoon = useCallback(() => {
     if (editor && noteId) {
-      void window.nock.notes.contentSave(noteId, editor.getJSON() as unknown as string);
+      const doc = editor.getJSON();
+      void window.nock.notes.contentSave(noteId, doc as unknown as string, extractPreviewFromDoc(doc));
     }
   }, [editor, noteId]);
 
@@ -292,7 +295,8 @@ export function EditorView() {
   useEffect(() => {
     return () => {
       if (editor && noteId) {
-        void window.nock.notes.contentSave(noteId, editor.getJSON() as unknown as string);
+        const doc = editor.getJSON();
+        void window.nock.notes.contentSave(noteId, doc as unknown as string, extractPreviewFromDoc(doc));
       }
     };
   }, [editor, noteId]);

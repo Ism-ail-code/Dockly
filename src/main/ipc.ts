@@ -75,6 +75,11 @@ export function registerIpc(): void {
 
   // ---------- notes ----------
   handle('notes:list', (_e, subjectId?: string, includeArchived?: boolean) => db.listNotes(subjectId, includeArchived));
+  // Light boot-time queries — the dashboard's recents/favorites/tags sections
+  // only need a handful of summary rows, never the full note collection.
+  handle('notes:list-recents', (_e, limit?: number, excludeFavorites?: boolean) => db.listRecentNotes(limit ?? 6, excludeFavorites));
+  handle('notes:list-favorites', () => db.listFavoriteNotes(8));
+  handle('notes:list-tags', () => db.listAllTags());
   handle('notes:get', (e, id: string) => {
     const note = db.getNote(id);
     if (note) {
@@ -91,9 +96,9 @@ export function registerIpc(): void {
     return note;
   });
   handle('notes:update-meta', (_e, id: string, patch: Record<string, unknown>) => db.updateNoteMeta(id, patch as never));
-  handle('notes:content-save', (e, id: string, content: string | Record<string, unknown>) => {
+  handle('notes:content-save', (e, id: string, content: string | Record<string, unknown>, preview?: string) => {
     const text = typeof content === 'string' ? content : JSON.stringify(content);
-    const note = db.saveNoteContent(id, text);
+    const note = db.saveNoteContent(id, text, undefined, preview);
     if (note) {
       const from = senderIsDock(e) ? 'dock' : 'main';
       state.broadcastContent(id, text, note.updatedAt, from);

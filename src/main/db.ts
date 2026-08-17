@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { Note, Subject, VersionSnapshot, Settings, AccentColor, SubjectStats } from '../shared/types';
 import { DEFAULT_SETTINGS, EMPTY_DOC, VERSION_LIMIT } from '../shared/defaults';
+import { extractPreviewFromDoc } from '../shared/preview';
 
 let db: DatabaseSync;
 let screenshotsDir: string;
@@ -65,6 +66,15 @@ export function initDb(userDataDir: string): void {
     CREATE INDEX IF NOT EXISTS idx_screenshots_note ON screenshots(note_id);
     CREATE INDEX IF NOT EXISTS idx_versions_note ON versions(note_id);
   `);
+  // Migration: the preview column stores the note's text preview so list and
+  // search queries never parse every note's JSON content again. Missing on
+  // pre-existing databases; rows written before it existed are backfilled
+  // lazily after boot (see backfillNotePreviews).
+  try {
+    db.exec(`ALTER TABLE notes ADD COLUMN preview TEXT NOT NULL DEFAULT ''`);
+  } catch {
+    // already migrated
+  }
 }
 
 function rowToNote(r: Record<string, unknown>): Note {
@@ -97,17 +107,7 @@ function rowToSubject(r: Record<string, unknown>): Subject {
 
 export function extractPreview(contentJson: string): string {
   try {
-    const doc = JSON.parse(contentJson);
-    const parts: string[] = [];
-    const walk = (node: unknown): void => {
-      if (!node || typeof node !== 'object') return;
-      const n = node as { type?: string; text?: string; content?: unknown[] };
-      if (n.text && n.type === 'text') parts.push(n.text);
-      if (Array.isArray(n.content)) for (const c of n.content) walk(c);
-    };
-    walk(doc);
-    const text = parts.join(' ').replace(/\s+/g, ' ').trim();
-    return text.length > 200 ? text.slice(0, 197) + '…' : text;
+    return extractPreviewFromDoc(JSON.parse(contentJson));
   } catch {
     return '';
   }
@@ -194,10 +194,17 @@ export function getSubject(id: string): Subject | null {
 
 // ---------- Notes ----------
 
+// Summary rows (list/search/favorites): no content payload. The editor loads
+// the full note via getNote; every other surface uses only the columns below.
 const NOTE_SELECT = `
+  SELECT n.id, n.subject_id, n.title, n.is_favorite, n.is_archived, n.tags,
+    n.created_at, n.updated_at, n.preview,
+    (SELECT COUNT(*) FROM screenshots sc WHERE sc.note_id = n.id) AS screenshot_count
+  FROM notes n`;
+
+const NOTE_SELECT_FULL = `
   SELECT n.*,
-    (SELECT COUNT(*) FROM screenshots sc WHERE sc.note_id = n.id) AS screenshot_count,
-    '' AS preview
+    (SELECT COUNT(*) FROM screenshots sc WHERE sc.note_id = n.id) AS screenshot_count
   FROM notes n`;
 
 export function listNotes(subjectId?: string, includeArchived = false): Note[] {
@@ -212,12 +219,41 @@ export function listNotes(subjectId?: string, includeArchived = false): Note[] {
   }
   sql += ` ORDER BY n.updated_at DESC`;
   const rows = db.prepare(sql).all(...params) as Record<string, unknown>[];
-  return rows.map((r) => ({ ...rowToNote(r), preview: extractPreview(String(r.content)) }));
+  return rows.map(rowToNote);
+}
+
+export function listRecentNotes(limit = 6, excludeFavorites = false): Note[] {
+  const rows = db
+    .prepare(
+      `${NOTE_SELECT} WHERE n.is_archived = 0${excludeFavorites ? ' AND n.is_favorite = 0' : ''} ORDER BY n.updated_at DESC LIMIT ?`,
+    )
+    .all(limit) as Record<string, unknown>[];
+  return rows.map(rowToNote);
+}
+
+export function listFavoriteNotes(limit = 8): Note[] {
+  const rows = db
+    .prepare(`${NOTE_SELECT} WHERE n.is_favorite = 1 AND n.is_archived = 0 ORDER BY n.updated_at DESC LIMIT ?`)
+    .all(limit) as Record<string, unknown>[];
+  return rows.map(rowToNote);
+}
+
+export function listAllTags(): string[] {
+  const rows = db.prepare(`SELECT DISTINCT tags FROM notes`).all() as { tags: string }[];
+  const seen = new Set<string>();
+  for (const r of rows) {
+    try {
+      for (const t of JSON.parse(r.tags) as string[]) seen.add(t);
+    } catch {
+      // malformed tags — ignore
+    }
+  }
+  return [...seen].sort((a, b) => a.localeCompare(b));
 }
 
 export function getNote(id: string): Note | null {
-  const r = db.prepare(`${NOTE_SELECT} WHERE n.id = ?`).get(id) as Record<string, unknown> | undefined;
-  return r ? { ...rowToNote(r), preview: extractPreview(String(r.content)) } : null;
+  const r = db.prepare(`${NOTE_SELECT_FULL} WHERE n.id = ?`).get(id) as Record<string, unknown> | undefined;
+  return r ? rowToNote(r) : null;
 }
 
 export function createNote(subjectId: string, title = ''): Note {
@@ -250,13 +286,19 @@ export function updateNoteMeta(
   return getNote(id);
 }
 
-export function saveNoteContent(id: string, content: string, titleFromContent?: string): Note | null {
-  const existing = getNote(id);
+export function saveNoteContent(id: string, content: string, titleFromContent?: string, preview?: string): Note | null {
+  // One cheap row read — never the full content. The title is only derived
+  // from the document when the note has none yet, and the renderer supplies
+  // the preview (it already holds the document), so the hot autosave path
+  // parses no JSON at all.
+  const existing = db.prepare(`SELECT title FROM notes WHERE id = ?`).get(id) as { title: string } | undefined;
   if (!existing) return null;
   const now = Date.now();
-  const derived = titleFromContent ?? deriveTitle(content);
-  const title = existing.title || derived || 'Untitled';
-  db.prepare(`UPDATE notes SET content = ?, title = ?, updated_at = ? WHERE id = ?`).run(content, title, now, id);
+  const title = existing.title || titleFromContent || deriveTitle(content) || 'Untitled';
+  const previewText = preview !== undefined ? preview.slice(0, 400) : extractPreview(content);
+  db.prepare(`UPDATE notes SET content = ?, title = ?, preview = ?, updated_at = ? WHERE id = ?`).run(
+    content, title, previewText, now, id,
+  );
   return getNote(id);
 }
 
@@ -276,9 +318,9 @@ export function duplicateNote(id: string): Note {
   const nid = randomUUID();
   const now = Date.now();
   db.prepare(
-    `INSERT INTO notes (id, subject_id, title, content, is_favorite, is_archived, tags, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(nid, src.subjectId, `${src.title || 'Untitled'} (copy)`, src.content, 0, 0, JSON.stringify(src.tags), now, now);
+    `INSERT INTO notes (id, subject_id, title, content, is_favorite, is_archived, tags, preview, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(nid, src.subjectId, `${src.title || 'Untitled'} (copy)`, src.content, 0, 0, JSON.stringify(src.tags), src.preview, now, now);
   // copy screenshots
   const shots = db.prepare(`SELECT * FROM screenshots WHERE note_id = ?`).all(id) as Record<string, unknown>[];
   for (const s of shots) {
@@ -380,7 +422,7 @@ export function getVersion(versionId: number): VersionSnapshot | null {
 
 export function searchNotes(q: string, scope: 'all' | 'favorites' | 'archived', limit = 40): { subject: Subject & SubjectStats; notes: Note[] }[] {
   const needle = `%${q.trim().toLowerCase()}%`;
-  let sql = `SELECT n.* FROM notes n WHERE (LOWER(n.title) LIKE ? OR LOWER(n.content) LIKE ? OR LOWER(n.tags) LIKE ?)`;
+  let sql = `${NOTE_SELECT} WHERE (LOWER(n.title) LIKE ? OR LOWER(n.content) LIKE ? OR LOWER(n.tags) LIKE ?)`;
   const params: (string | number | null)[] = [needle, needle, needle];
   if (scope === 'favorites') sql += ` AND n.is_favorite = 1 AND n.is_archived = 0`;
   else if (scope === 'archived') sql += ` AND n.is_archived = 1`;
@@ -390,7 +432,7 @@ export function searchNotes(q: string, scope: 'all' | 'favorites' | 'archived', 
   const rows = db.prepare(sql).all(...params) as Record<string, unknown>[];
   const bySubject = new Map<string, Note[]>();
   for (const r of rows) {
-    const note = { ...rowToNote(r), preview: extractPreview(String(r.content)) };
+    const note = rowToNote(r);
     if (!bySubject.has(note.subjectId)) bySubject.set(note.subjectId, []);
     bySubject.get(note.subjectId)!.push(note);
   }
@@ -461,4 +503,88 @@ export function screenshotCount(noteId: string): number {
 
 export function dbScreenshotsDir(): string {
   return screenshotsDir;
+}
+
+/**
+ * One-time migration for databases created before the preview column existed:
+ * fill previews for legacy rows. Chunked on setImmediate so it never blocks
+ * startup — run it once, right after initDb.
+ */
+export function backfillNotePreviews(): void {
+  const rows = db.prepare(`SELECT id, content FROM notes WHERE preview = ''`).all() as { id: string; content: string }[];
+  if (rows.length === 0) return;
+  const update = db.prepare(`UPDATE notes SET preview = ? WHERE id = ?`);
+  let i = 0;
+  const step = (): void => {
+    const end = Math.min(i + 100, rows.length);
+    for (; i < end; i++) {
+      update.run(extractPreview(rows[i].content), rows[i].id);
+    }
+    if (i < rows.length) setImmediate(step);
+  };
+  setImmediate(step);
+}
+
+// ---------- QA seed data (perf harness only — NOCK_PERF_SEED) ----------
+
+const SEED_WORDS = [
+  'vector', 'scalar', 'force', 'momentum', 'energy', 'gravity', 'charge', 'current', 'resistance',
+  'field', 'orbit', 'photon', 'electron', 'neutron', 'proton', 'atom', 'molecule', 'bond',
+  'solute', 'solvent', 'concentration', 'equilibrium', 'catalyst', 'enzyme', 'mitosis', 'meiosis',
+  'allele', 'chromosome', 'genotype', 'phenotype', 'equation', 'theorem', 'integral', 'derivative',
+  'matrix', 'polynomial', 'function', 'limit', 'series', 'inference', 'syntax', 'semantics',
+];
+
+export function seedNotesForPerf(count: number): void {
+  const now = Date.now();
+  const subjects = ['Mathematics', 'Physics', 'Chemistry', 'Biology', 'English', 'Computer Science'];
+  const subjectIds: string[] = [];
+  for (const name of subjects) {
+    const id = randomUUID();
+    db.prepare(`INSERT INTO subjects (id, name, icon, color, sort_order, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(
+      id, name, 'book', 'indigo', subjectIds.length, now, now,
+    );
+    subjectIds.push(id);
+  }
+  const tagsPool = [['Exam'], ['Assignment'], ['Formula'], ['Definition'], ['Important'], ['Revision'], ['Exam', 'Formula'], ['Definition', 'Important']];
+  const insert = db.prepare(
+    `INSERT INTO notes (id, subject_id, title, content, is_favorite, is_archived, tags, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+  const insertSetting = db.prepare(`INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`);
+  for (let i = 0; i < count; i++) {
+    const title = `Seed Note ${i + 1} — ${SEED_WORDS[i % SEED_WORDS.length]} ${SEED_WORDS[(i * 7) % SEED_WORDS.length]}`;
+    const body: Record<string, unknown>[] = [
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: `Section ${i + 1}` }] },
+    ];
+    for (let p = 0; p < 6; p++) {
+      const words: string[] = [];
+      for (let w = 0; w < 24; w++) {
+        words.push(SEED_WORDS[(i * 13 + p * 5 + w) % SEED_WORDS.length]);
+      }
+      body.push({ type: 'paragraph', content: [{ type: 'text', text: words.join(' ') }] });
+    }
+    body.push({
+      type: 'bulletList',
+      content: [
+        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: SEED_WORDS[i % SEED_WORDS.length] }] }] },
+        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: SEED_WORDS[(i + 1) % SEED_WORDS.length] }] }] },
+      ],
+    });
+    const content = JSON.stringify({ type: 'doc', content: body });
+    insert.run(
+      randomUUID(),
+      subjectIds[i % subjectIds.length],
+      title,
+      content,
+      i % 25 === 0 ? 1 : 0,
+      0,
+      JSON.stringify(tagsPool[i % tagsPool.length]),
+      now - (count - i) * 60_000,
+      now - (count - i) * 60_000,
+    );
+    if (i === count - 1) insertSetting.run('lastNoteId', JSON.stringify(null));
+  }
+  insertSetting.run('onboarded', JSON.stringify(true));
+  insertSetting.run('sessionResume', JSON.stringify(false));
 }

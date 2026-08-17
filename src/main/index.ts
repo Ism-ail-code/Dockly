@@ -1,5 +1,5 @@
 import { app, screen, protocol } from 'electron';
-import { initDb, getSettings, deleteNote, setSetting } from './db';
+import { initDb, getSettings, deleteNote, setSetting, backfillNotePreviews } from './db';
 import { createMainWindow, showMainWindow, showDock, onDisplayMetricsChanged, toggleDockCollapse } from './windows';
 import { registerIpc, registerProtocol } from './ipc';
 import { registerGlobalHotkeys, unregisterGlobalHotkeys } from './hotkeys';
@@ -7,6 +7,7 @@ import { startDockAutoHidePoll, stopDockAutoHidePoll } from './autohide';
 import { initClipboardListener, stopClipboardListener } from './clipboard';
 import { initUpdater } from './updater';
 import { runClipboardE2E } from './cliptest';
+import { runPerfSeed, startPerfMeasurement, watchWindowLoad } from './perf';
 import { state, hub } from './state';
 
 process.on('uncaughtException', (err) => console.log('[lifecycle] uncaughtException', err));
@@ -24,6 +25,8 @@ if (
   process.env.NOCK_SMOKE_USER_DATA
 ) {
   app.setPath('userData', process.env.NOCK_SMOKE_USER_DATA);
+} else if (process.env.NOCK_PERF === '1' && process.env.NOCK_PERF_USER_DATA) {
+  app.setPath('userData', process.env.NOCK_PERF_USER_DATA);
 }
 
 const gotLock = app.requestSingleInstanceLock();
@@ -47,6 +50,15 @@ if (!gotLock) {
   app.whenReady().then(() => {
     initDb(app.getPath('userData'));
     state.settings = getSettings();
+    // One-time preview migration for pre-existing databases — runs chunked
+    // off the startup path, never blocks first paint.
+    void backfillNotePreviews();
+
+    if (process.env.NOCK_PERF === '1' && process.env.NOCK_PERF_SEED) {
+      runPerfSeed(Number(process.env.NOCK_PERF_SEED) || 150);
+      return;
+    }
+
     registerProtocol();
     registerIpc();
     registerGlobalHotkeys();
@@ -61,6 +73,14 @@ if (!gotLock) {
     // onboarding flow in the main window instead.
     showMainWindow('dashboard');
     if (state.settings?.onboarded) showDock();
+
+    if (process.env.NOCK_PERF === '1') {
+      const win = hub.main;
+      if (win && !win.isDestroyed()) {
+        startPerfMeasurement(win);
+        if (hub.dock && !hub.dock.isDestroyed()) watchWindowLoad('dock', hub.dock);
+      }
+    }
 
     if (state.settings?.dockAutoHide) startDockAutoHidePoll();
 

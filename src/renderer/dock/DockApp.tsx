@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { CSSProperties, KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
+import { extractPreviewFromDoc } from '@shared/preview';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
@@ -150,12 +151,8 @@ export function DockApp() {
   }, []);
 
   const refreshRecents = useCallback(async () => {
-    const all = await window.nock.notes.list(undefined, false);
     const subjectById = new Map((await window.nock.subjects.list()).map((s) => [s.id, s]));
-    const rows = all
-      .sort((a, b) => b.updatedAt - a.updatedAt)
-      .slice(0, 8)
-      .map((note) => ({ note, subject: subjectById.get(note.subjectId) }));
+    const rows = (await window.nock.notes.listRecents(8)).map((note) => ({ note, subject: subjectById.get(note.subjectId) }));
     setRecents(rows);
   }, []);
 
@@ -213,7 +210,7 @@ export function DockApp() {
         setSaveState('saving');
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(() => {
-          void window.nock.notes.contentSave(id, snapshot as unknown as string);
+          void window.nock.notes.contentSave(id, snapshot as unknown as string, extractPreviewFromDoc(snapshot));
           setSaveState('saved');
           setTimeout(() => setSaveState('idle'), 1600);
           if (recentsTimer.current) clearTimeout(recentsTimer.current);
@@ -234,7 +231,8 @@ export function DockApp() {
     const onBlur = () => {
       const id = activeNoteId.current;
       if (!id || !editor) return;
-      void window.nock.notes.contentSave(id, editor.getJSON() as unknown as string);
+      const doc = editor.getJSON();
+      void window.nock.notes.contentSave(id, doc as unknown as string, extractPreviewFromDoc(doc));
     };
     window.addEventListener('blur', onBlur);
     return () => window.removeEventListener('blur', onBlur);
@@ -331,7 +329,8 @@ export function DockApp() {
           .scrollIntoView()
           .run();
       }
-      void window.nock.notes.contentSave(id, ed.getJSON() as unknown as string);
+      const doc = ed.getJSON();
+      void window.nock.notes.contentSave(id, doc as unknown as string, extractPreviewFromDoc(doc));
       if (recentsTimer.current) clearTimeout(recentsTimer.current);
       recentsTimer.current = setTimeout(() => void refreshRecents(), 1500);
 

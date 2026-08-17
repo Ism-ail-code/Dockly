@@ -1,19 +1,22 @@
-import { useEffect, useState } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { useApp } from '@/app/store';
 import { TopBar } from '@/components/TopBar';
-import { SearchOverlay } from '@/components/SearchOverlay';
-import { AnnotationEditor } from '@/components/AnnotationEditor';
-import { VersionPanel } from '@/components/VersionPanel';
 import { ToastRegion, useToast } from '@/components/ui';
 import { UpdateUI } from '@/components/UpdateUI';
 import { TooltipHost } from '@/components/Tooltip';
 import { playSound } from '@/lib/sound';
-import { Onboarding } from '@/views/Onboarding';
-import { Dashboard } from '@/views/Dashboard';
-import { SubjectView } from '@/views/SubjectView';
-import { EditorView } from '@/views/EditorView';
-import { SettingsView } from '@/views/SettingsView';
-import { ArchiveView } from '@/views/ArchiveView';
+
+// Heavy views load on first use: the dashboard ships without TipTap/editor,
+// settings, annotator and search until the user actually opens them.
+const SearchOverlay = lazy(() => import('@/components/SearchOverlay').then((m) => ({ default: m.SearchOverlay })));
+const AnnotationEditor = lazy(() => import('@/components/AnnotationEditor').then((m) => ({ default: m.AnnotationEditor })));
+const VersionPanel = lazy(() => import('@/components/VersionPanel').then((m) => ({ default: m.VersionPanel })));
+const Onboarding = lazy(() => import('@/views/Onboarding').then((m) => ({ default: m.Onboarding })));
+const Dashboard = lazy(() => import('@/views/Dashboard').then((m) => ({ default: m.Dashboard })));
+const SubjectView = lazy(() => import('@/views/SubjectView').then((m) => ({ default: m.SubjectView })));
+const EditorView = lazy(() => import('@/views/EditorView').then((m) => ({ default: m.EditorView })));
+const SettingsView = lazy(() => import('@/views/SettingsView').then((m) => ({ default: m.SettingsView })));
+const ArchiveView = lazy(() => import('@/views/ArchiveView').then((m) => ({ default: m.ArchiveView })));
 
 interface ClipPayload {
   png: string;
@@ -32,6 +35,9 @@ export function App() {
   const settings = useApp((s) => s.settings);
   const view = useApp((s) => s.view);
   const currentNoteId = useApp((s) => s.currentNoteId);
+  const searchOpen = useApp((s) => s.searchOpen);
+  const versionOpen = useApp((s) => s.versionOpen);
+  const annotationOpen = useApp((s) => s.annotationOpen);
   const toast = useToast();
   const [confirmShot, setConfirmShot] = useState<ClipPayload | null>(null);
 
@@ -200,7 +206,9 @@ export function App() {
   if (!settings.onboarded) {
     return (
       <div className="app-bg">
-        <Onboarding />
+        <Suspense fallback={null}>
+          <Onboarding />
+        </Suspense>
         <TooltipHost />
       </div>
     );
@@ -211,15 +219,29 @@ export function App() {
       <div className="app-bg" />
       <TopBar />
       <main className="app-main" key={view}>
-        {view === 'dashboard' && <Dashboard />}
-        {view === 'subject' && <SubjectView />}
-        {view === 'editor' && currentNoteId && <EditorView />}
-        {view === 'settings' && <SettingsView />}
-        {view === 'archive' && <ArchiveView />}
+        <Suspense fallback={<div className="view-enter" />}>
+          {view === 'dashboard' && <Dashboard />}
+          {view === 'subject' && <SubjectView />}
+          {view === 'editor' && currentNoteId && <EditorView />}
+          {view === 'settings' && <SettingsView />}
+          {view === 'archive' && <ArchiveView />}
+        </Suspense>
       </main>
-      <SearchOverlay />
-      <VersionPanel />
-      <AnnotationEditor />
+      {searchOpen && (
+        <Suspense fallback={null}>
+          <SearchOverlay />
+        </Suspense>
+      )}
+      {versionOpen && (
+        <Suspense fallback={null}>
+          <VersionPanel />
+        </Suspense>
+      )}
+      {annotationOpen && (
+        <Suspense fallback={null}>
+          <AnnotationEditor />
+        </Suspense>
+      )}
       {confirmShot && (
         <div className="modal-backdrop" onClick={() => setConfirmShot(null)}>
           <div className="modal" style={{ width: 400 }} onClick={(e) => e.stopPropagation()}>

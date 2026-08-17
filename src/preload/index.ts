@@ -53,10 +53,14 @@ const api = {
   notes: {
     list: (subjectId?: string, includeArchived?: boolean) =>
       invoke<Note[]>('notes:list', subjectId, includeArchived),
+    listRecents: (limit?: number, excludeFavorites?: boolean) => invoke<Note[]>('notes:list-recents', limit, excludeFavorites),
+    listFavorites: () => invoke<Note[]>('notes:list-favorites'),
+    listTags: () => invoke<string[]>('notes:list-tags'),
     get: (id: string) => invoke<Note | null>('notes:get', id),
     create: (subjectId: string, title?: string) => invoke<Note>('notes:create', subjectId, title),
     updateMeta: (id: string, patch: Record<string, unknown>) => invoke<Note>('notes:update-meta', id, patch),
-    contentSave: (id: string, content: string) => invoke<Note | null>('notes:content-save', id, content),
+    contentSave: (id: string, content: string | Record<string, unknown>, preview?: string) =>
+      invoke<Note | null>('notes:content-save', id, content, preview),
     delete: (id: string) => invoke<void>('notes:delete', id),
     duplicate: (id: string) => invoke<Note>('notes:duplicate', id),
     setFavorite: (id: string, fav: boolean) => invoke<Note>('notes:set-favorite', id, fav),
