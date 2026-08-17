@@ -1,5 +1,6 @@
 import { BrowserWindow, screen, app } from 'electron';
 import path from 'node:path';
+import os from 'node:os';
 import { state, hub } from './state';
 import {
   DOCK_MIN_WIDTH,
@@ -12,6 +13,20 @@ import {
 const isDev = !app.isPackaged;
 const RENDERER_URL = isDev ? process.env.VITE_DEV_SERVER_URL ?? '' : '';
 const DIST = path.join(__dirname, '..', '..', 'dist');
+
+// OS "background materials" (acrylic/mica) are Windows 11-only APIs. On
+// Windows 10 they are unavailable; the frosted look still works because the
+// renderer CSS uses backdrop-filter blur, which Chromium supports on both
+// Windows 10 and 11. Building >= 22000 means Windows 11.
+function isWin11(): boolean {
+  if (process.platform !== 'win32') return false;
+  const m = /^10\.0\.(\d+)$/.exec(os.release());
+  return !!m && Number(m[1]) >= 22000;
+}
+
+function acrylicMaterial(): 'acrylic' | 'none' {
+  return isWin11() ? 'acrylic' : 'none';
+}
 
 export function mainWindowUrl(): string {
   if (RENDERER_URL) return RENDERER_URL;
@@ -41,7 +56,7 @@ export function createMainWindow(theme: string): BrowserWindow {
     icon: path.join(__dirname, '..', 'assets', 'icon.png'),
     title: 'Nock',
     backgroundColor: '#00000000',
-    backgroundMaterial: 'acrylic',
+    backgroundMaterial: acrylicMaterial(),
     titleBarStyle: 'hidden',
     titleBarOverlay: titlebarColors(theme),
     webPreferences: {
@@ -205,7 +220,7 @@ export function createDockWindow(): BrowserWindow {
   // full contrast; the OS acrylic material supplies the blur behind the dock.
   // "Clear" glass skips the material entirely so the desktop behind stays
   // sharp and readable through the translucent panel.
-  if (process.platform === 'win32') {
+  if (process.platform === 'win32' && isWin11()) {
     try {
       const glass = s?.dockGlassStyle ?? 'frosted';
       const material = s?.dockTransparencyEnabled && glass === 'frosted' ? 'acrylic' : 'none';
@@ -355,7 +370,7 @@ export function setDockTransparency(enabled: boolean, value: number): void {
   const win = dockWin;
   if (win && !win.isDestroyed()) {
     win.setOpacity(1);
-    if (process.platform === 'win32') {
+    if (process.platform === 'win32' && isWin11()) {
       try {
         const glass = state.settings?.dockGlassStyle ?? 'frosted';
         const material = enabled && glass === 'frosted' ? 'acrylic' : 'none';
