@@ -30,6 +30,25 @@ let lastSig = '';
 let lastTextSig = '';
 let active = false;
 
+// ----- Windows 10 data-race retry -----
+// WM_CLIPBOARDUPDATE can arrive before the clipboard data is actually
+// readable (Snipping Tool / Win+Shift+S deliver image data asynchronously).
+// On Windows 11 the data is usually available immediately, which is why the
+// race shows up on Windows 10. Bounded, event-driven retries (never a
+// background poll) cover the gap with no idle cost.
+let pendingRetries = 0;
+let retryTimer: NodeJS.Timeout | null = null;
+const MAX_RETRIES = 4;
+const RETRY_DELAY_MS = 120;
+
+// ----- last-resort sequence poller -----
+// Only active when no native clipboard notifier is available (koffi worker
+// dead AND PowerShell fallback unavailable). Reads GetClipboardSequenceNumber
+// once per second — a single kernel counter, no clipboard content, no window
+// handles — so it touches nothing sensitive and costs ~nothing.
+let seqPoller: NodeJS.Timeout | null = null;
+let lastSeq = 0;
+
 // ----- screenshot delivery state -----
 // When an image lands while no Nock window is focused, we remember it and
 // deliver once the user returns (or give up after a bounded time).
@@ -110,12 +129,61 @@ export function initClipboardListener(): void {
   const source = startClipboardNotify(onClipboardChanged);
   if (source === 'none') {
     console.log('[clipboard] no native clipboard notifier available — capture disabled');
+    startSequencePoller();
   }
 
   // If a screenshot is waiting for a focused Nock window, deliver it the
   // moment the user returns — no polling involved. Windows may be created
   // after this call, so the hooks are re-attached on every change event too.
   ensureFocusHooks();
+}
+
+// ---------------------------------------------------------------------------
+// Last-resort sequence poller. Fires only when every native clipboard-change
+// notifier has failed; re-evaluated on every poll so a notifier that comes
+// back later (e.g. the PowerShell watcher respawning) disables the poller.
+// ---------------------------------------------------------------------------
+
+function startSequencePoller(): void {
+  if (seqPoller) return;
+  let getSeq: (() => number) | null = null;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const koffi = require('koffi');
+    const user32 = koffi.load('user32.dll');
+    getSeq = user32.func('uint32_t GetClipboardSequenceNumber()');
+  } catch (e) {
+    console.log('[clipboard] koffi unavailable for sequence poller:', String(e));
+    return;
+  }
+  if (!getSeq) return;
+  try {
+    lastSeq = getSeq();
+  } catch {
+    return;
+  }
+  seqPoller = setInterval(() => {
+    if (!active || getClipboardNotifySource() !== 'none') return;
+    let seq = 0;
+    try {
+      seq = getSeq();
+    } catch {
+      return;
+    }
+    if (seq !== lastSeq) {
+      lastSeq = seq;
+      onClipboardChanged();
+    }
+  }, 1000);
+  seqPoller.unref();
+  console.log('[clipboard] safety-net clipboard sequence poller started (1/s)');
+}
+
+function stopSequencePoller(): void {
+  if (seqPoller) {
+    clearInterval(seqPoller);
+    seqPoller = null;
+  }
 }
 
 // Focus hooks for deferred screenshot delivery. Kept in a Set keyed by window
@@ -137,8 +205,12 @@ function ensureFocusHooks(): void {
 export function stopClipboardListener(): void {
   active = false;
   stopClipboardNotify();
+  stopSequencePoller();
   if (pendingImgTimer) clearTimeout(pendingImgTimer);
   pendingImgTimer = null;
+  if (retryTimer) clearTimeout(retryTimer);
+  retryTimer = null;
+  pendingRetries = 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -146,24 +218,43 @@ export function stopClipboardListener(): void {
 // ---------------------------------------------------------------------------
 
 function onClipboardChanged(): void {
-  if (!active) return;
+  if (!active || retryTimer) return;
   ensureFocusHooks();
-  handleImageCapture();
-  handleTextCapture();
+
+  // Windows 10 can notify before the data is readable — the first read often
+  // comes back empty for screen snips. Bounded event-driven retries give the
+  // source application time to publish the data; nothing here polls.
+  const imageReadable = readAndHandleImage();
+  const textReadable = readAndHandleText();
+
+  if (!imageReadable && !textReadable && pendingRetries < MAX_RETRIES) {
+    pendingRetries++;
+    retryTimer = setTimeout(() => {
+      retryTimer = null;
+      onClipboardChanged();
+    }, RETRY_DELAY_MS);
+    return;
+  }
+  pendingRetries = 0;
 }
 
 // ----- screenshots -----
 
-function handleImageCapture(): void {
+/** Reads the clipboard image and handles it. True when image data was present. */
+function readAndHandleImage(): boolean {
   let img;
   try {
     img = clipboard.readImage();
   } catch {
     /* clipboard can throw when locked */
-    return;
+    return false;
   }
-  if (img.isEmpty()) return;
+  if (img.isEmpty()) return false;
+  handleImageCapture(img);
+  return true;
+}
 
+function handleImageCapture(img: Electron.NativeImage): void {
   const png = img.toPNG();
   const sig = signature(png);
   const ignoreDupes = state.settings?.ignoreDuplicateClipboard ?? true;
@@ -269,17 +360,22 @@ function isSelfCopy(): boolean {
   return false;
 }
 
-function handleTextCapture(): void {
+/** Reads the clipboard text and handles it. True when non-empty text was present. */
+function readAndHandleText(): boolean {
   let text = '';
   try {
     text = clipboard.readText() ?? '';
   } catch {
     /* clipboard can throw when locked */
-    return;
+    return false;
   }
   text = text.trim();
-  if (!text) return;
+  if (!text) return false;
+  handleTextCapture(text);
+  return true;
+}
 
+function handleTextCapture(text: string): void {
   // Remember every observed text so stale clipboard content is never treated
   // as a fresh capture later (including while the feature is switched off).
   const sig = textSignature(text);

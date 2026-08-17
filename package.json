@@ -66,6 +66,12 @@
       "dist/**",
       "!dist/tests/**"
     ],
+    "extraResources": [
+      {
+        "from": "scripts/clipboard-watch.ps1",
+        "to": "clipboard-watch.ps1"
+      }
+    ],
     "asarUnpack": [
       "**/node_modules/koffi/**"
     ],
