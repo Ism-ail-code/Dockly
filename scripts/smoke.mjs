@@ -11,6 +11,11 @@ const userData = path.join(process.env.TEMP ?? root, 'nock-e2e-userdata');
 // Fresh isolated profile every run: a stale one (e.g. from a killed run) would
 // skip onboarding and make the E2E tour time out waiting for it.
 fs.rmSync(userData, { recursive: true, force: true });
+fs.mkdirSync(userData, { recursive: true });
+// The backup tour consumes a fixed import queue: the exported backup first,
+// then this deliberately corrupt file (garbage bytes — not a zip) to prove
+// corrupted backups are rejected without touching the data.
+fs.writeFileSync(path.join(userData, '_smoke_corrupt.nockbackup'), Buffer.from('this is not a nock backup at all — definitely not a zip archive'));
 
 const child = spawn(electronExe, ['.', `--user-data-dir=${userData}`], {
   cwd: root,
@@ -53,6 +58,15 @@ console.log(output.split('\n').slice(-60).join('\n'));
 console.log('--- result ---');
 
 let pass = errors.length === 0;
+
+// Node-side verification that the restore flow wrote the mandatory safety
+// backup of the pre-restore data (the renderer cannot inspect the disk).
+const backupsDir = path.join(userData, 'backups');
+const preRestoreFiles = fs.existsSync(backupsDir)
+  ? fs.readdirSync(backupsDir).filter((f) => f.startsWith('pre-restore-') && f.endsWith('.nockbackup'))
+  : [];
+const safetyBackupCreated = preRestoreFiles.length >= 1;
+console.log(`safety backups on disk: ${preRestoreFiles.length}`);
 if (match) {
   let result;
   try {
@@ -62,7 +76,7 @@ if (match) {
   }
   console.log('E2E_RESULT:', JSON.stringify(result, null, 2));
   if (result.error) pass = false;
-  else if (result.onboardingDone && result.skipLink === true && result.ctaFinalLabel === 'Continue' && result.onboardingSubjectStep === true && result.subjectAddedViaOnboarding === true && result.removeButtonExists === true && result.backButtonExists === true && result.skipNowExists === true && result.onboardedSetting === true && result.pickCards === 0 && Array.isArray(result.subjectNames) && result.subjectNames.includes('Mathematics') && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0 && result.rapidSwitch?.ok === true && result.dockUi?.ok === true && result.nav?.ok === true && result.full?.ok === true && result.dockFull?.ok === true && result.full?.upd?.ok === true) {
+  else if (result.onboardingDone && result.skipLink === true && result.ctaFinalLabel === 'Continue' && result.onboardingSubjectStep === true && result.subjectAddedViaOnboarding === true && result.removeButtonExists === true && result.backButtonExists === true && result.skipNowExists === true && result.onboardedSetting === true && result.pickCards === 0 && Array.isArray(result.subjectNames) && result.subjectNames.includes('Mathematics') && result.subjectCards >= 1 && result.noteCreated && result.searchHits >= 1 && result.dockOpen && result.versionCount >= 0 && result.rapidSwitch?.ok === true && result.dockUi?.ok === true && result.nav?.ok === true && result.full?.ok === true && result.dockFull?.ok === true && result.full?.upd?.ok === true && result.full?.bk?.ok === true) {
     console.log('E2E CHECKS PASSED');
   } else if (result.nav?.ok === false) {
     console.log('E2E CHECKS FAILED (navigation round-trips)');
@@ -81,6 +95,12 @@ if (match) {
     pass = false;
   } else if (result.dockFull?.ok === false) {
     console.log('E2E CHECKS FAILED (dock feature tour)');
+    pass = false;
+  } else if (result.full?.bk?.ok === false) {
+    console.log('E2E CHECKS FAILED (backup export/restore flow)');
+    pass = false;
+  } else if (!safetyBackupCreated) {
+    console.log('E2E CHECKS FAILED (pre-restore safety backup missing on disk)');
     pass = false;
   } else {
     console.log('E2E CHECKS FAILED (unexpected values)');

@@ -1201,6 +1201,75 @@ const FULL_SCRIPT = `(async () => {
     st.ok = !!(st.searchFilters && st.searchEmpty && st.clearSearchBtn && st.searchCleared && st.themeLight && st.themeMidnight && st.themeDark && st.accentEmerald && st.accentRestored && st.switchCount >= 19 && st.switchesToggleBack && st.presetApplied && st.sliderApplied && st.glassClear && st.glassFrosted && st.addDisabledWhenEmpty && st.addEnabledWhenFilled && st.subjectAdded && st.deleteSubjectModal && st.subjectDeleted && st.resetBtn && st.resetModal && st.resetCancelled && st.shortcutRows >= 10 && st.aboutShown && st.helpSection && st.helpRows >= 4 && st.replayTourBtn && st.studyTimerSet && st.readingProgressSet && st.lineNumbersSet && st.dailyStatsSet && st.dailyStatsPill && st.studyTimerShown && st.readingProgressShown && st.lineNumbersShown && st.studyTimerRestored && st.readingProgressRestored && st.lineNumbersRestored && st.dailyStatsRestored);
     results.st = st;
 
+    // ================= DATA & STORAGE (export → mutate → restore → corrupt) =================
+    // Smoke mode: file dialogs are bypassed and the import flow consumes a
+    // fixed queue (the exported backup, then a corrupt file pre-written by
+    // scripts/smoke.mjs) so the real UI flow can be driven end to end.
+    const bk = {};
+    try {
+      await click('[aria-label="Settings"]'); await waitFor('.settings-view', 8000, '.settings-view@bk');
+      bk.section = $$('.settings-section-title').some((t) => (t.textContent ?? '').includes('Data & Storage'));
+      bk.exportBtn = !!$('button[data-tooltip="Export Nock Data"]');
+      bk.importBtn = !!$('button[data-tooltip="Import Backup"]');
+      const countsBefore = await window.nock.backup.counts();
+      bk.countsRowShown = (($('.data-panel-counts')?.textContent ?? '').includes(String(countsBefore.notes)));
+
+      clickEl($('button[data-tooltip="Export Nock Data"]'));
+      const userData = (await window.nock.appInfo()).userData;
+      // The export runs in the main process (snapshot + zip write); poll for
+      // the finished file instead of guessing a fixed wait time.
+      let exported = null;
+      for (let i = 0; i < 24 && !exported; i++) {
+        await sleep(500);
+        exported = await window.nock.backup.inspect(userData + '/_smoke_export.nockbackup').catch(() => null);
+      }
+      bk.exportWorked =
+        !!exported &&
+        exported.counts.notes === countsBefore.notes &&
+        exported.counts.subjects === countsBefore.subjects &&
+        exported.counts.screenshots === countsBefore.screenshots;
+
+      // Change the data, then restore the exported snapshot over it.
+      const subjects = await window.nock.subjects.list();
+      const tempNote = await window.nock.notes.create(subjects[0].id, 'Backup E2E temp note');
+      bk.notesAfterMutation = (await window.nock.backup.counts()).notes === countsBefore.notes + 1;
+
+      clickEl($('button[data-tooltip="Import Backup"]')); await sleep(1500);
+      bk.confirmModal = (($('.modal-title')?.textContent ?? '').includes('Restore Nock Backup?'));
+      bk.confirmCounts = !!exported && (($('.modal-body')?.textContent ?? '').includes(String(exported.counts.notes)));
+      clickEl($$('.modal-foot .btn').find((b) => (b.textContent ?? '').includes('Backup Current Data & Restore')));
+      await sleep(2800);
+      bk.modalClosed = !$('.modal');
+      const countsAfter = await window.nock.backup.counts();
+      bk.diag = {
+        before: countsBefore,
+        exp: exported ? { notes: exported.counts.notes, subjects: exported.counts.subjects, screenshots: exported.counts.screenshots } : null,
+        after: countsAfter,
+        afterCorrupt: null,
+      };
+      bk.restoreWorked =
+        !!exported &&
+        countsAfter.notes === exported.counts.notes &&
+        countsAfter.subjects === exported.counts.subjects &&
+        countsAfter.screenshots === exported.counts.screenshots;
+      bk.restoreToast = toastText().includes('Restore complete');
+      void tempNote;
+
+      // A corrupt backup must be rejected without touching the data.
+      clickEl($('button[data-tooltip="Import Backup"]')); await sleep(1800);
+      bk.corruptRejected = !$('.modal') && toastText().includes('cannot be restored');
+      const countsAfterCorrupt = await window.nock.backup.counts();
+      bk.diag.afterCorrupt = countsAfterCorrupt;
+      bk.dataIntactAfterCorrupt = countsAfterCorrupt.notes === countsAfter.notes;
+
+      await clickBack(); await waitFor('.dashboard', 8000, '.dashboard-after-bk');
+      bk.ok = !!(bk.section && bk.exportBtn && bk.importBtn && bk.countsRowShown && bk.exportWorked && bk.notesAfterMutation && bk.confirmModal && bk.confirmCounts && bk.modalClosed && bk.restoreWorked && bk.restoreToast && bk.corruptRejected && bk.dataIntactAfterCorrupt);
+    } catch (e) {
+      bk.error = String(e);
+      bk.ok = false;
+    }
+    results.bk = bk;
+
     // ================= SEARCH OVERLAY + SHORTCUTS =================
     const sr = {};
     key('k', { ctrlKey: true }); await sleep(400);
@@ -1241,7 +1310,7 @@ const FULL_SCRIPT = `(async () => {
     results.arch = arch;
     results.st = st;
     results.sr = sr;
-    results.ok = !!(topbar.ok && dash.ok && ed.ok && sv.ok && arch.ok && st.ok && sr.ok);
+    results.ok = !!(topbar.ok && dash.ok && ed.ok && sv.ok && arch.ok && st.ok && bk.ok && sr.ok);
   } catch (err) {
     results.error = String(err);
     results.diag = {
@@ -1559,6 +1628,14 @@ const DOCK_FULL_SCRIPT = `(async () => {
         const live = $$(widgetSel).find((b) => (b.dataset.tooltip ?? '') === tip);
         if (!live) { tooltips[tip] = 'stale'; continue; }
         el = live;
+      }
+      // A tooltip lingering from the previous widget would keep the wrong text
+      // visible and fail this check; force it away before hovering the next one.
+      const lingering = $('.tooltip');
+      if (lingering) {
+        lingering.dispatchEvent(new PointerEvent('pointerout', { bubbles: true }));
+        lingering.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+        await sleep(80);
       }
       hoverEl(el);
       let shown = false;
