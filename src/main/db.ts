@@ -2,79 +2,132 @@ import { DatabaseSync } from 'node:sqlite';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Note, Subject, VersionSnapshot, Settings, AccentColor, SubjectStats } from '../shared/types';
+import type { Note, Subject, VersionSnapshot, Settings, AccentColor, SubjectStats, DataCounts } from '../shared/types';
 import { DEFAULT_SETTINGS, EMPTY_DOC, VERSION_LIMIT } from '../shared/defaults';
 import { extractPreviewFromDoc } from '../shared/preview';
 
 let db: DatabaseSync;
 let screenshotsDir: string;
+let dbPath: string;
+
+/** Current schema version — see MIGRATIONS below. Stored via PRAGMA user_version. */
+export const SCHEMA_VERSION = 2;
+
+/**
+ * Ordered schema migrations. MIGRATIONS[v] upgrades a database from schema
+ * version v to v+1. Every migration must be idempotent/guarded so it is safe
+ * to run more than once (legacy databases start at version 0 with the schema
+ * already applied by older builds).
+ */
+const MIGRATIONS: Array<(d: DatabaseSync) => void> = [
+  // v0 -> v1: baseline schema (identical DDL to the original build).
+  (d) => {
+    d.exec(`
+      CREATE TABLE IF NOT EXISTS subjects (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        icon TEXT NOT NULL DEFAULT 'book',
+        color TEXT NOT NULL DEFAULT 'indigo',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS notes (
+        id TEXT PRIMARY KEY,
+        subject_id TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
+        title TEXT NOT NULL DEFAULT '',
+        content TEXT NOT NULL,
+        is_favorite INTEGER NOT NULL DEFAULT 0,
+        is_archived INTEGER NOT NULL DEFAULT 0,
+        tags TEXT NOT NULL DEFAULT '[]',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS screenshots (
+        id TEXT PRIMARY KEY,
+        note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+        path TEXT NOT NULL,
+        width INTEGER NOT NULL,
+        height INTEGER NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS versions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        note_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS daily_stats (
+        day TEXT PRIMARY KEY,
+        notes INTEGER NOT NULL DEFAULT 0,
+        shots INTEGER NOT NULL DEFAULT 0,
+        edits INTEGER NOT NULL DEFAULT 0
+      );
+      CREATE INDEX IF NOT EXISTS idx_notes_subject ON notes(subject_id);
+      CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_screenshots_note ON screenshots(note_id);
+      CREATE INDEX IF NOT EXISTS idx_versions_note ON versions(note_id);
+    `);
+  },
+  // v1 -> v2: preview column (added in an earlier build via try/catch ALTER;
+  // guarded here so it is safe on databases that already have it).
+  (d) => {
+    const cols = d.prepare(`SELECT name FROM pragma_table_info('notes')`).all() as { name: string }[];
+    if (cols.some((c) => c.name === 'preview')) return;
+    d.exec(`ALTER TABLE notes ADD COLUMN preview TEXT NOT NULL DEFAULT ''`);
+  },
+];
+
+function userVersion(): number {
+  return Number((db.prepare('PRAGMA user_version').get() as { user_version: number }).user_version ?? 0);
+}
+
+function runMigrations(): void {
+  const current = userVersion();
+  if (current === SCHEMA_VERSION) return;
+  if (current > SCHEMA_VERSION) {
+    // A database created by a newer Nock than the one running now. Do not
+    // touch it — schema changes are the one thing we must never guess at.
+    console.log(`[db] database schema v${current} is newer than this build (v${SCHEMA_VERSION}) — leaving it untouched`);
+    return;
+  }
+  // Safety snapshot before the first migration modifies user data. The
+  // snapshot is a full self-contained copy of the database as it is now.
+  try {
+    const snap = path.join(path.dirname(dbPath), 'nock.pre-migration.db');
+    fs.rmSync(snap, { force: true });
+    db.exec(`VACUUM INTO '${snap.replace(/'/g, '')}'`);
+  } catch (e) {
+    console.log('[db] pre-migration snapshot skipped:', e);
+  }
+  for (let v = current; v < SCHEMA_VERSION; v++) {
+    db.exec('BEGIN');
+    try {
+      MIGRATIONS[v](db);
+      db.exec(`PRAGMA user_version = ${v + 1}`);
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw new Error(`[db] migration v${v} -> v${v + 1} failed: ${e instanceof Error ? e.message : String(e)}`);
+    }
+  }
+}
 
 export function initDb(userDataDir: string): void {
-  const dbPath = path.join(userDataDir, 'nock.db');
+  dbPath = path.join(userDataDir, 'nock.db');
   screenshotsDir = path.join(userDataDir, 'screenshots');
   fs.mkdirSync(screenshotsDir, { recursive: true });
   db = new DatabaseSync(dbPath);
-  db.exec(`
-    PRAGMA journal_mode = WAL;
-    PRAGMA foreign_keys = ON;
-    CREATE TABLE IF NOT EXISTS subjects (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      icon TEXT NOT NULL DEFAULT 'book',
-      color TEXT NOT NULL DEFAULT 'indigo',
-      sort_order INTEGER NOT NULL DEFAULT 0,
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS notes (
-      id TEXT PRIMARY KEY,
-      subject_id TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
-      title TEXT NOT NULL DEFAULT '',
-      content TEXT NOT NULL,
-      is_favorite INTEGER NOT NULL DEFAULT 0,
-      is_archived INTEGER NOT NULL DEFAULT 0,
-      tags TEXT NOT NULL DEFAULT '[]',
-      created_at INTEGER NOT NULL,
-      updated_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS screenshots (
-      id TEXT PRIMARY KEY,
-      note_id TEXT NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-      path TEXT NOT NULL,
-      width INTEGER NOT NULL,
-      height INTEGER NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS versions (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      note_id TEXT NOT NULL,
-      content TEXT NOT NULL,
-      created_at INTEGER NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS daily_stats (
-      day TEXT PRIMARY KEY,
-      notes INTEGER NOT NULL DEFAULT 0,
-      shots INTEGER NOT NULL DEFAULT 0,
-      edits INTEGER NOT NULL DEFAULT 0
-    );
-    CREATE INDEX IF NOT EXISTS idx_notes_subject ON notes(subject_id);
-    CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at DESC);
-    CREATE INDEX IF NOT EXISTS idx_screenshots_note ON screenshots(note_id);
-    CREATE INDEX IF NOT EXISTS idx_versions_note ON versions(note_id);
-  `);
+  db.exec(`PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;`);
+  runMigrations();
   // Migration: the preview column stores the note's text preview so list and
   // search queries never parse every note's JSON content again. Missing on
   // pre-existing databases; rows written before it existed are backfilled
   // lazily after boot (see backfillNotePreviews).
-  try {
-    db.exec(`ALTER TABLE notes ADD COLUMN preview TEXT NOT NULL DEFAULT ''`);
-  } catch {
-    // already migrated
-  }
 }
 
 function rowToNote(r: Record<string, unknown>): Note {
@@ -503,6 +556,63 @@ export function screenshotCount(noteId: string): number {
 
 export function dbScreenshotsDir(): string {
   return screenshotsDir;
+}
+
+export function getDbPath(): string {
+  return dbPath;
+}
+
+export function schemaVersion(): number {
+  return SCHEMA_VERSION;
+}
+
+export function closeDb(): void {
+  try {
+    db?.close();
+  } catch {
+    /* already closed */
+  }
+}
+
+/**
+ * Atomic self-contained snapshot of the live database (safe with WAL: the
+ * snapshot includes all committed transactions). Used by the backup export.
+ */
+export function snapshotTo(dest: string): void {
+  fs.rmSync(dest, { force: true });
+  db.exec(`VACUUM INTO '${dest.replace(/'/g, '')}'`);
+}
+
+export function countData(): DataCounts {
+  const one = (sql: string): number => Number((db.prepare(sql).get() as { c: number }).c);
+  return {
+    subjects: one('SELECT COUNT(*) AS c FROM subjects'),
+    notes: one('SELECT COUNT(*) AS c FROM notes'),
+    screenshots: one('SELECT COUNT(*) AS c FROM screenshots'),
+    versions: one('SELECT COUNT(*) AS c FROM versions'),
+    settings: one('SELECT COUNT(*) AS c FROM settings'),
+    dailyStats: one('SELECT COUNT(*) AS c FROM daily_stats'),
+  };
+}
+
+/**
+ * After a restore the screenshot files live in a different directory. Note
+ * content only references file basenames, so re-pointing the path column is
+ * all that is needed — nothing in the note documents changes.
+ */
+export function repointScreenshotPaths(): void {
+  const rows = db.prepare(`SELECT id, note_id, path FROM screenshots`).all() as { id: string; note_id: string; path: string }[];
+  const update = db.prepare(`UPDATE screenshots SET path = ? WHERE id = ?`);
+  db.exec('BEGIN');
+  try {
+    for (const r of rows) {
+      update.run(path.join(screenshotsDir, r.note_id, path.basename(r.path)), r.id);
+    }
+    db.exec('COMMIT');
+  } catch (e) {
+    db.exec('ROLLBACK');
+    throw e;
+  }
 }
 
 /**
