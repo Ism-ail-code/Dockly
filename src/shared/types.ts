@@ -169,3 +169,39 @@ export interface UpdateInfo {
   /** True when Nock can self-install the downloaded update (NSIS install). */
   installSupported: boolean;
 }
+
+// ---------- Backup ----------
+
+export interface DataCounts {
+  subjects: number;
+  notes: number;
+  screenshots: number;
+  versions: number;
+  settings: number;
+  dailyStats: number;
+}
+
+export interface BackupManifest {
+  /** .nockbackup format version — must equal BACKUP_FORMAT_VERSION to restore. */
+  formatVersion: number;
+  /** Nock app version that created the backup. */
+  appVersion: string;
+  /** Database schema version of the snapshot (PRAGMA user_version). */
+  schemaVersion: number;
+  createdAt: string;
+  counts: DataCounts;
+}
+
+export interface BackupExportResult {
+  path: string;
+  counts: DataCounts;
+}
+
+export interface BackupRestoreResult {
+  manifest: BackupManifest;
+  restored: DataCounts;
+  /** Screenshots referenced by the database but missing from the backup. */
+  missingScreenshots: string[];
+  /** Safety backup of the previous data, created before the restore. */
+  safetyBackup: string;
+}

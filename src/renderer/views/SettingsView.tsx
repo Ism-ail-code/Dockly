@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Check,
   ClipboardList,
+  Database,
   Download,
   GraduationCap,
   FolderOpen,
@@ -18,6 +19,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Trash2,
+  Upload,
   Wrench,
   X,
 } from 'lucide-react';
@@ -25,7 +27,7 @@ import { useApp } from '@/app/store';
 import { BackButton, Kbd, useToast } from '@/components/ui';
 import { ToggleRow } from '@/components/Toggle';
 import { ACCENT_COLORS, SHORTCUTS } from '@shared/defaults';
-import type { AccentColor, Settings } from '@shared/types';
+import type { AccentColor, BackupManifest, DataCounts, Settings } from '@shared/types';
 
 const THEMES = [
   { id: 'light', label: 'Light', swatch: ['#f3f4f8', '#ffffff'] },
@@ -386,6 +388,20 @@ function buildCategories(onReset: () => void): Category[] {
     ],
   },
   {
+    id: 'data',
+    title: 'Data & Storage',
+    icon: <Database size={15} />,
+    rows: [
+      {
+        kind: 'custom',
+        title: 'Your Nock Data',
+        desc: 'Create a complete backup of your Nock data, including notes, subjects, screenshots, and settings. Backups are portable .nockbackup files you can restore on any PC.',
+        keywords: 'data storage export import backup restore notes subjects screenshots settings files',
+        render: () => <DataPanel />,
+      },
+    ],
+  },
+  {
     id: 'updates',
     title: 'Updates',
     icon: <Download size={15} />,
@@ -711,6 +727,159 @@ export function SettingsView() {
         </div>
       )}
     </div>
+  );
+}
+
+function DataPanel() {
+  const toast = useToast();
+  const applySettings = useApp((s) => s.applySettings);
+  const refreshSubjects = useApp((s) => s.refreshSubjects);
+  const refreshNotes = useApp((s) => s.refreshNotes);
+  const refreshRecents = useApp((s) => s.refreshRecents);
+  const refreshFavorites = useApp((s) => s.refreshFavorites);
+  const refreshTags = useApp((s) => s.refreshTags);
+  const [counts, setCounts] = useState<DataCounts | null>(null);
+  const [storage, setStorage] = useState('');
+  const [busy, setBusy] = useState<'' | 'export' | 'import'>('');
+  const [pending, setPending] = useState<{ path: string; manifest: BackupManifest } | null>(null);
+
+  useEffect(() => {
+    void (async () => {
+      const [c, info] = await Promise.all([window.nock.backup.counts(), window.nock.appInfo()]);
+      setCounts(c);
+      setStorage(info.userData);
+    })();
+  }, []);
+
+  const doExport = async () => {
+    setBusy('export');
+    try {
+      const res = await window.nock.backup.export();
+      if (!res) {
+        toast.info('Export canceled');
+      } else {
+        setCounts(res.counts);
+        toast.success(
+          `Backup created — ${res.counts.notes} notes, ${res.counts.subjects} subjects, ${res.counts.screenshots} screenshots`,
+        );
+      }
+    } catch (e) {
+      toast.warn(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const pickImport = async () => {
+    setBusy('import');
+    try {
+      const p = await window.nock.backup.pickImport();
+      if (!p) return;
+      const manifest = await window.nock.backup.inspect(p);
+      setPending({ path: p, manifest });
+    } catch (e) {
+      toast.warn(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const doRestore = async () => {
+    if (!pending) return;
+    setBusy('import');
+    try {
+      const res = await window.nock.backup.restore(pending.path);
+      setPending(null);
+      const settings = await window.nock.settings.get();
+      applySettings(settings);
+      await Promise.all([refreshSubjects(), refreshNotes(), refreshRecents(), refreshFavorites(), refreshTags()]);
+      setCounts(res.restored);
+      toast.success(
+        `Restore complete — ${res.restored.notes} notes, ${res.restored.subjects} subjects, ${res.restored.screenshots} screenshots. Your previous data was backed up first.`,
+      );
+    } catch (e) {
+      toast.warn(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy('');
+    }
+  };
+
+  return (
+    <>
+      <div className="data-panel">
+        <div className="data-panel-row">
+          <div className="data-panel-label">Your Nock Data</div>
+          <div className="data-panel-counts">
+            {counts ? `${counts.notes} notes · ${counts.subjects} subjects · ${counts.screenshots} screenshots` : '…'}
+          </div>
+        </div>
+        <div className="data-panel-row">
+          <div className="data-panel-label">Export</div>
+          <button className="btn" disabled={busy !== ''} onClick={() => void doExport()} data-tooltip="Export Nock Data">
+            {busy === 'export' ? (
+              'Exporting…'
+            ) : (
+              <>
+                <Download size={14} />
+                Export Nock Data
+              </>
+            )}
+          </button>
+        </div>
+        <div className="data-panel-row">
+          <div className="data-panel-label">Import</div>
+          <button className="btn" disabled={busy !== ''} onClick={() => void pickImport()} data-tooltip="Import Backup">
+            {busy === 'import' ? (
+              'Importing…'
+            ) : (
+              <>
+                <Upload size={14} />
+                Import Backup
+              </>
+            )}
+          </button>
+        </div>
+        <div className="data-panel-row">
+          <div className="data-panel-label">Storage location</div>
+          <div className="data-panel-path" title={storage}>
+            {storage || '…'}
+          </div>
+        </div>
+      </div>
+
+      {pending && (
+        <div className="modal-backdrop" onClick={() => setPending(null)}>
+          <div className="modal" style={{ width: 380 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="modal-title">Restore Nock Backup?</div>
+            </div>
+            <div className="modal-body">
+              <p className="t-sub">
+                This backup contains <b>{pending.manifest.counts.notes}</b> notes, <b>{pending.manifest.counts.subjects}</b>{' '}
+                subjects and <b>{pending.manifest.counts.screenshots}</b> screenshots.
+              </p>
+              <p className="t-sub">
+                Your current data is backed up first, so nothing is lost if the restore goes wrong.
+              </p>
+            </div>
+            <div className="modal-foot">
+              <button className="btn" onClick={() => setPending(null)} data-tooltip="Keep your current data">
+                Cancel
+              </button>
+              <button
+                className="btn btn-primary"
+                disabled={busy !== ''}
+                onClick={() => void doRestore()}
+                data-tooltip="Back up current data & restore"
+              >
+                <Download size={14} />
+                Backup Current Data & Restore
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

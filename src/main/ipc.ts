@@ -1,5 +1,6 @@
-import { ipcMain, app, protocol, screen } from 'electron';
+import { ipcMain, app, protocol, screen, dialog } from 'electron';
 import * as db from './db';
+import * as backup from './backup';
 import { state } from './state';
 import {
   showDock,
@@ -21,6 +22,7 @@ import { setCaptureMode, getCaptureMode, isCaptureEligible, isWatcherActive, mar
 import { startDockAutoHidePoll, stopDockAutoHidePoll } from './autohide';
 import { VERSION_INTERVAL_MS, DOCK_MIN_WIDTH, DOCK_MAX_WIDTH } from '../shared/defaults';
 import type { AccentColor, Settings } from '../shared/types';
+import path from 'node:path';
 
 function reply(_event: Electron.IpcMainInvokeEvent, fn: () => unknown): unknown {
   try {
@@ -63,7 +65,12 @@ export function registerIpc(): void {
   };
 
   // ---------- app ----------
-  handle('app:info', () => ({ version: app.getVersion(), platform: process.platform, isDev: !app.isPackaged }));
+  handle('app:info', () => ({
+    version: app.getVersion(),
+    platform: process.platform,
+    isDev: !app.isPackaged,
+    userData: app.getPath('userData'),
+  }));
 
   // ---------- subjects ----------
   handle('subjects:list', () => db.listSubjects());
@@ -309,6 +316,79 @@ export function registerIpc(): void {
 
   // ---------- misc ----------
   handle('nock:clear-pending-screenshot', () => state.setPendingScreenshot(null));
+
+  // ---------- backup / data & storage ----------
+  // These handlers are asynchronous (file dialogs, disk I/O) so they bypass
+  // the sync `handle` wrapper and build the { ok, data|error } envelope
+  // themselves, matching the response shape the preload bridge expects.
+  handle('backup:counts', () => db.countData());
+
+  ipcMain.handle('backup:export', async () => {
+    try {
+      let dest: string | null = null;
+      if (process.env.NOCK_SMOKE === '1') {
+        dest = path.join(app.getPath('userData'), '_smoke_export.nockbackup');
+      } else {
+        const win = getMainWindow();
+        const d = await dialog.showSaveDialog(
+          win && !win.isDestroyed() ? win : undefined!,
+          {
+            title: 'Export Nock Data',
+            defaultPath: path.join(
+              app.getPath('downloads'),
+              `Nock-Backup-${new Date().toISOString().slice(0, 10)}.nockbackup`,
+            ),
+            filters: [{ name: 'Nock Backup', extensions: ['nockbackup'] }],
+          },
+        );
+        dest = d.canceled || !d.filePath ? null : d.filePath;
+      }
+      if (!dest) return { ok: true, data: null };
+      return { ok: true, data: await backup.exportBackup(dest, app.getVersion()) };
+    } catch (e) {
+      console.log('[ipc] backup:export error:', e);
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  // Smoke mode consumes a fixed queue of import sources (export result, then a
+  // corrupt file) so the E2E tour can drive the real dialogs-free UI flow.
+  const smokeImportQueue =
+    process.env.NOCK_SMOKE === '1'
+      ? [
+          path.join(app.getPath('userData'), '_smoke_export.nockbackup'),
+          path.join(app.getPath('userData'), '_smoke_corrupt.nockbackup'),
+        ]
+      : null;
+
+  ipcMain.handle('backup:pick-import', async () => {
+    try {
+      if (smokeImportQueue) {
+        return { ok: true, data: smokeImportQueue.shift() ?? null };
+      }
+      const win = getMainWindow();
+      const d = await dialog.showOpenDialog(win && !win.isDestroyed() ? win : undefined!, {
+        title: 'Import Nock Backup',
+        filters: [{ name: 'Nock Backup', extensions: ['nockbackup'] }],
+        properties: ['openFile'],
+      });
+      return { ok: true, data: d.canceled || d.filePaths.length === 0 ? null : d.filePaths[0] };
+    } catch (e) {
+      console.log('[ipc] backup:pick-import error:', e);
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
+
+  handle('backup:inspect', (_e, srcPath: string) => backup.inspectBackup(srcPath));
+
+  ipcMain.handle('backup:restore', async (_e, srcPath: string) => {
+    try {
+      return { ok: true, data: await backup.restoreBackup(srcPath, app.getVersion()) };
+    } catch (e) {
+      console.log('[ipc] backup:restore error:', e);
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  });
 }
 
 export function registerProtocol(): void {

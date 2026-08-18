@@ -659,6 +659,43 @@
 .settings-row:last-child {
   border-bottom: none;
 }
+/* Data & Storage panel (export / import / storage location) */
+.data-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  width: 100%;
+  min-width: 300px;
+}
+.data-panel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.data-panel-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.data-panel-counts {
+  font-size: 12px;
+  color: var(--text-1);
+  text-align: right;
+}
+.data-panel-path {
+  font-size: 11px;
+  color: var(--text-2);
+  max-width: 340px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
 .settings-label {
   min-width: 0;
 }

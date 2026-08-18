@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcRendererEvent } from 'electron';
 import type {
   AccentColor,
+  BackupExportResult,
+  BackupManifest,
+  BackupRestoreResult,
+  DataCounts,
   DockConfig,
   Note,
   SearchResult,
@@ -39,8 +43,18 @@ const api = {
   on,
   invoke,
 
-  appInfo: () => invoke<{ version: string; platform: string; isDev: boolean }>('app:info'),
+  appInfo: () => invoke<{ version: string; platform: string; isDev: boolean; userData: string }>('app:info'),
   runtimeState: () => invoke<any>('app:runtime-state'),
+
+  backup: {
+    counts: () => invoke<DataCounts>('backup:counts'),
+    /** Runs the save dialog internally; resolves null when the user cancels. */
+    export: () => invoke<BackupExportResult | null>('backup:export'),
+    /** Runs the open dialog internally; resolves null when the user cancels. */
+    pickImport: () => invoke<string | null>('backup:pick-import'),
+    inspect: (srcPath: string) => invoke<BackupManifest>('backup:inspect', srcPath),
+    restore: (srcPath: string) => invoke<BackupRestoreResult>('backup:restore', srcPath),
+  },
 
   subjects: {
     list: () => invoke<Array<Subject & SubjectStats>>('subjects:list'),
