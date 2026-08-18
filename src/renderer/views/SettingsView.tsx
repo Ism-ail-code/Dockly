@@ -668,7 +668,7 @@ export function SettingsView() {
           </div>
           <div className="settings-row" style={{ border: 'none' }}>
             <div className="settings-label">
-              <div className="settings-name">Nock v1.1</div>
+              <div className="settings-name">Nock v1.2</div>
               <div className="settings-desc">
                 Offline first — all data lives on this PC.
                 <br />
