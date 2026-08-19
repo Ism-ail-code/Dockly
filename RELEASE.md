@@ -46,8 +46,16 @@ The portable build (`Nock-1.2.0-portable.exe`) needs no install — just run it.
 ## Uninstalling
 
 - Open **Settings → Apps → Installed apps**, find **Nock**, and click
-  **Uninstall**. This removes the program files and Start Menu/desktop
-  shortcuts. Your notes are kept (see below).
+  **Uninstall**. This removes the program files, Start Menu/desktop shortcuts
+  **and all Nock user data** (notes, subjects, screenshots, settings — the
+  `%APPDATA%\nock` folder), including the Windows autostart entry.
+- Installing Nock again afterwards starts completely fresh (first-run
+  onboarding).
+- Updates never delete user data: installing a newer version over an existing
+  one keeps every note, subject, screenshot and setting.
+- Backups you exported (`.nockbackup` files) are saved where you chose —
+  typically outside `%APPDATA%\nock` — so they survive uninstall and can be
+  imported after a fresh install.
 
 ## Where User Data Lives
 
@@ -60,11 +68,13 @@ reinstalls and moving the app.
 ```
 
 - The SQLite database (`nock.db`) holds notes, subjects, settings, and version
-  history.
+  history. The database carries a schema version (`PRAGMA user_version`) and
+  older databases are migrated automatically on first launch — never reset.
 - Screenshot/image files are stored under the same directory.
+- A safety copy (`nock.pre-migration.db`) may be left next to the database when
+  a schema migration runs.
 
-Removing that folder deletes all notes — uninstalling the app does not delete
-it.
+The folder is created automatically on first run and removed on uninstall.
 
 ## First Run
 

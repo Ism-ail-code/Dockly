@@ -66,7 +66,11 @@ Artifacts in `release/` (signed): `Nock-Setup-1.2.0.exe`, `Nock-1.2.0-portable.e
 
 - User data: `%APPDATA%\nock\` (`nock.db`, `screenshots/`, `backups/`). Never in install dir. Never reset/recreated at startup.
 - Dev isolation: `NOCK_DEV_USER_DATA` opt-in env → `app.setPath('userData', …)`.
-- Uninstall does NOT delete user data (`deleteAppDataOnUninstall: false`).
+- Uninstall DOES delete user data (`deleteAppDataOnUninstall: true`; NSIS
+  removes `%APPDATA%\Nock` + `%APPDATA%\nock`, and `build/installer.nsh` removes
+  the autostart Run registry value). Updates never delete data — electron-builder
+  skips the app-data step when the installer runs with `--updated` or installs
+  over an existing copy. Guarded by `tests/uninstall-config.test.ts`.
 - Backup format version 1; rejected if `formatVersion !== 1` or `schemaVersion > current`. Invalid/corrupt → "This backup cannot be restored because it is invalid or incompatible with this version of Nock."
 - Auto-backups (scheduled) are deliberately NOT implemented (user decision).
 
