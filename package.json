@@ -98,7 +98,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": false,
+      "deleteAppDataOnUninstall": true,
       "artifactName": "Nock-Setup-${version}.${ext}"
     },
     "portable": {
