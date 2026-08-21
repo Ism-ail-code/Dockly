@@ -9,12 +9,19 @@
  * notification API, in case the FFI module cannot be loaded.
  */
 import { Worker } from 'node:worker_threads';
+import os from 'node:os';
 import path from 'node:path';
 import { app } from 'electron';
 import { spawn, type ChildProcess } from 'node:child_process';
 import readline from 'node:readline';
 
 export type ClipboardNotifySource = 'koffi' | 'powershell' | 'none';
+
+function isWindows10OrOlder(): boolean {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(os.release());
+  if (!m) return false;
+  return parseInt(m[3], 10) < 22000;
+}
 
 let worker: Worker | null = null;
 let workerThreadId = 0;
@@ -144,6 +151,21 @@ export function startClipboardNotify(cb: () => void): ClipboardNotifySource {
   onChange = cb;
   stopping = false;
   if (process.platform !== 'win32') return 'none';
+  if (isWindows10OrOlder()) {
+    // The koffi worker thread segfaults the whole process on Windows 10
+    // (~1.5 s after start, inside its message pump). The PowerShell watcher
+    // uses the same Win32 notification API but runs in a separate process,
+    // so a native failure there can never take the app down.
+    try {
+      startPowerShell();
+      source = 'powershell';
+      console.log('[clipboard-notify] Windows 10: using PowerShell clipboard watcher');
+    } catch (e) {
+      console.log('[clipboard-notify] PowerShell watcher failed:', e);
+      source = 'none';
+    }
+    return source;
+  }
   try {
     startWorker();
     source = 'koffi';

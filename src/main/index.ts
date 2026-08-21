@@ -67,8 +67,8 @@ if (!gotLock) {
     registerProtocol();
     registerIpc();
     registerGlobalHotkeys();
-    initClipboardListener();
     initUpdater();
+    initClipboardListener();
 
     createMainWindow(state.settings.theme);
 

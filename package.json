@@ -13,6 +13,7 @@
     "start": "npm run build && electron .",
     "smoke": "npm run build && node scripts/smoke.mjs",
     "cliptest": "npm run build && node scripts/cliptest.mjs --skip-build",
+    "test:uninstall-data": "node scripts/uninstall-data-test.mjs",
     "dist": "npm run build && electron-builder --win",
     "dist:portable": "npm run build && electron-builder --win portable"
   },
@@ -98,7 +99,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "deleteAppDataOnUninstall": false,
+      "deleteAppDataOnUninstall": true,
+      "include": "build/installer.nsh",
       "artifactName": "Nock-Setup-${version}.${ext}"
     },
     "portable": {
