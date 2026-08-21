@@ -1,4 +1,4 @@
-import { app, screen, protocol } from 'electron';
+import { app, dialog, screen, protocol } from 'electron';
 import { initDb, getSettings, deleteNote, setSetting, backfillNotePreviews } from './db';
 import { createMainWindow, showMainWindow, showDock, onDisplayMetricsChanged, toggleDockCollapse } from './windows';
 import { registerIpc, registerProtocol } from './ipc';
@@ -53,7 +53,25 @@ if (!gotLock) {
   });
 
   app.whenReady().then(() => {
-    initDb(app.getPath('userData'));
+    try {
+      initDb(app.getPath('userData'));
+    } catch (e) {
+      // A failed open/migration must never destroy the user's data — the
+      // migration path rolls back and snapshots before touching anything.
+      // Report the problem clearly and stop instead of running against a
+      // half-initialized workspace.
+      console.log('[lifecycle] database init failed:', e);
+      dialog.showErrorBox(
+        'Nock could not open your workspace',
+        'Nock could not open its data file and will close.\n\n' +
+          'Your existing data was not modified. A safety copy may have been saved as ' +
+          '"nock.pre-migration.db" inside your Nock data folder:\n' +
+          app.getPath('userData') +
+          '\n\nPlease report this problem, then restart Nock.',
+      );
+      app.exit(1);
+      return;
+    }
     state.settings = getSettings();
     // One-time preview migration for pre-existing databases — runs chunked
     // off the startup path, never blocks first paint.
